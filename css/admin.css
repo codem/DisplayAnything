@@ -1,0 +1,28 @@
+form#Form_EditForm .upload_anything_field .field_content {
+	width : 100%;
+	margin : 0 0 12px 0;
+	padding : 0;
+}
+
+form#Form_EditForm .upload_anything_field .field_content fieldset {
+	border : 1px solid #ccc;
+	padding : 8px;
+}
+
+form#Form_EditForm .upload_anything_field .field_content fieldset ul {
+	margin-left : 22px;
+}
+
+form#Form_EditForm .upload_anything_field .field_content fieldset ul li {
+	display : list-item;
+	font-size : 12px;
+	list-style-type : square;
+}
+
+form#Form_EditForm .upload_anything_field .field_content fieldset .message {
+	padding : 8px 12px;
+	margin-top : 12px;
+}
+form#Form_EditForm .upload_anything_field .field_content fieldset .message p {
+	margin : 0;
+}
