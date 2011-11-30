@@ -56,7 +56,7 @@ See the examples below for more information on mimetype configuration.
 <li>log into the CMS and start editing</li>
 </ol>
 
-## Migration items from the ImageGallery gallery module ##
+## Migrating items from the ImageGallery gallery module ##
 If DisplayAnything detects an  ImageGallery Album associated with the current page it will prompt if you wish to import images. Migration is additive (does not destroy the old gallery or items).
 Choose a gallery from the menu and save the page, successfully imported items will appear in the file list. You can retry the migration at any time.
 
