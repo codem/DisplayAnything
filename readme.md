@@ -1,6 +1,6 @@
 # DisplayAnything #
 
-A file upload and gallery tool for Silverstripe 2.4+. It's a simple replacement for the ImageGallery module and it's designed to get you up and running with the minimum of fuss, grey hairs and esoteric error messages.
+A file upload and gallery tool for Silverstripe 2.4+. It's a simple replacement for the ImageGallery module and it's designed to get you up and running with minimum or no configuration and esoteric error messages.
 
 DisplayAnything implements Ajax Upload (http://valums.com/ajax-upload/), a third party file upload handler.
 
@@ -11,13 +11,13 @@ DisplayAnything implements Ajax Upload (http://valums.com/ajax-upload/), a third
 + Multiple file uploading in supported browsers (Note: not supported in Internet Explorer)
 + Drag and Drop in supported browsers (Chrome, Firefox, Safari and possibly Opera)
 + XHR file uploading
-+ Has Zero Dependencies on DataObjectManager or Uploadify
-+ 100% Flash Free - no plugin crashes, HTTP errors, I/O errors or other futzing with incomprehensible errors!
++ Has Zero Dependencies on the Silverstripe modules ImageGallery, DataObjectManager and Uploadify
++ 100% Flash Free - no plugin crashes, HTTP errors, I/O errors or other futzing with incomprehensible Flash errors!
 + Import ImageGallery albums and their items to a gallery
 + Uses jQuery bundled with Silverstripe
-+ Well documented & clean code with extendable classes
++ Well documented & clean code with extendable classes and overrideable methods
 + $_REQUEST not used
-+ Uses  Valum's file uploader (hat tip)
++ Uses Valum's Ajax Uploader (hat tip)
 + Drag and drop sorting of images & files in the gallery
 + File upload progress with cancel option
 
@@ -29,6 +29,7 @@ DisplayAnything implements Ajax Upload (http://valums.com/ajax-upload/), a third
 I built DisplayAnything after implementing the ImageGallery module on a large, complex SilverStripe site.
 This resulted in me spending most of my time debugging odd pieces of DataObjectManager code and head scratching Uploadify errors. 
 I decided 'never again' and DisplayAnything was born.
+It's now available for you to use.
 
 ## Bugs ##
 Probably. Check the Issues list.
@@ -37,18 +38,29 @@ Probably. Check the Issues list.
 DisplayAnything comes preconfigured to accept image uploads (GIF, PNG, JPG). When setting up the field you can pass an array of mimetypes to override/clear these defaults.
 See the examples below for more information on mimetype configuration.
 
+## Installing ##
+<ol>
+<li>cd /path/to/your/silverstripe/site</li>
+<li>Grab the source:
+	<dl>
+		<dt>Git</dt>
+		<dd><code>git clone git@github.com:codem/DisplayAnything.git display_anything</code></dd>
+		<dt>Bzr (requires bzr-git) - note the / in the path</dt>
+		<dd><code>bzr branch git://git@github.com/codem/DisplayAnything.git display_anything</code></dd>
+		<dt>Download</dt>
+		<dd><code>wget https://github.com/codem/DisplayAnything/zipball/master</code></dd>
+	</dl>
+</li>
+<li>run /dev/build (admin privileges required) and possibly a ?flush=1</li>
+<li>implement in the CMS (see 'CMS' below)</li>
+<li>log into the CMS and start editing</li>
+</ol>
+
 ## Migration items from the ImageGallery gallery module ##
 If DisplayAnything detects an  ImageGallery Album associated with the current page it will prompt if you wish to import images. Migration is additive (does not destroy the old gallery or items).
 Choose a gallery from the menu and save the page, successfully imported items will appear in the file list. You can retry the migration at any time.
 
 Once migration is complete you can remove the Image Gallery module as and when you wish.
-
-## Installing ##
-+ Grab the source, using Git, Bzr, wget or whatever your poison
-+ Install into a directory "display_anything" in the root of your site
-+ run /dev/build (admin privileges required) and possibly a ?flush=1
-+ implement in the CMS (see 'CMS' below)
-+ log into the CMS and start editing
 
 ## CMS ##
 You can implement a DisplayAnything gallery using the normal getCmsFields() syntax on a Page type:
