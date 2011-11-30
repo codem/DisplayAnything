@@ -2,6 +2,8 @@
 
 A file upload and gallery tool for Silverstripe 2.4+. It's a simple replacement for the ImageGallery module and it's designed to get you up and running with the minimum of fuss, grey hairs and esoteric error messages.
 
+DisplayAnything implements Ajax Upload (http://valums.com/ajax-upload/), a third party file upload handler.
+
 ## Features ##
 + Handle file uploads via XHR or standard uploads.
 + Security: uses a configurable mimetype map, not file extensions, to determine an uploaded file type
@@ -132,3 +134,13 @@ Here's an example Page control you may like to use as a starting point:
 + Twitter : @_codem
 + Issues list please for bug reports
 + Commercial support is available on <a href="http://codem.com.au">this and other Silverstripe projects</a>
+
+## Licenses ##
+DisplayAnything is licensed under the Modified BSD License (refer license.txt)
+
+This library links to Ajax Upload (http://valums.com/ajax-upload/) which is released under the GNU GPL and GNU LGPL 2 or later licenses
++ DisplayAnything is linking to Ajax Upload as described in Section 6 of the LGPL2.1 (http://www.gnu.org/licenses/lgpl-2.1.html)
++ You may modify DisplayAnything as you see fit
++ The Copyright holder of Ajax Upload is Andrew Valums
++ Refer to javascript/file-uploader/license.txt for further information regarding Ajax Upload
+
