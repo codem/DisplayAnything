@@ -151,6 +151,7 @@ Here's an example Page control you may like to use as a starting point:
 DisplayAnything is licensed under the Modified BSD License (refer license.txt)
 
 This library links to Ajax Upload (http://valums.com/ajax-upload/) which is released under the GNU GPL and GNU LGPL 2 or later licenses
+
 + DisplayAnything is linking to Ajax Upload as described in Section 6 of the LGPL2.1 (http://www.gnu.org/licenses/lgpl-2.1.html)
 + You may modify DisplayAnything under the terms described in license.txt
 + The Copyright holder of DisplayAnything is Codem
