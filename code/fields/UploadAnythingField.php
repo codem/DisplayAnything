@@ -365,11 +365,11 @@ class UploadAnythingField extends ComplexTableField {
 	protected function FileEditorLink($file, $relation, $action = "edit") {
 		switch($relation) {
 			case "single":
-				$link = Controller::join_links('/' . $this->Link(), 'item/' . $file->ID . '/' . $action);
+				$link = Controller::join_links(Director::baseURL(), $this->Link(), 'item/' . $file->ID . '/' . $action);
 				break;
 			case "gallery":
 				$parts = parse_url($this->Link());
-				$link = Controller::join_links('/' .  $parts['path'] . '/item/' . $this->controller->{$this->name}()->ID . '/DetailForm/field/' . $this->itemsClass . '/item/' . $file->ID . '/' . $action . '/?' . (isset($parts['query']) ? $parts['query'] : ''));
+				$link = Controller::join_links(Director::baseURL(), $parts['path'] . '/item/' . $this->controller->{$this->name}()->ID . '/DetailForm/field/' . $this->itemsClass . '/item/' . $file->ID . '/' . $action . '/?' . (isset($parts['query']) ? $parts['query'] : ''));
 				break;
 			default:
 				throw new Exception("Unhandled relation: {$relation}");
