@@ -94,6 +94,7 @@ UploadAnything.prototype = {
 				function(event) {
 					event.preventDefault();
 					_self.load_lightbox(this);
+					return false;//avoid event bubbling
 				}
 			);
 		
@@ -123,6 +124,7 @@ UploadAnything.prototype = {
 								jQuery('.file-uploader a.reload').removeClass('loading');
 							}
 						);
+					return false;//avoid bubbling
 				}
 			);
 		
@@ -141,9 +143,8 @@ UploadAnything.prototype = {
 								jQuery(_self).parents('.file-uploader').find('a.reload').trigger('click');
 							}
 						);
-					} catch(e) {
-						alert(e);
-					}
+					} catch(e) {}
+					return false;
 				}
 			);
 			
