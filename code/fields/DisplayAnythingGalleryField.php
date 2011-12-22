@@ -19,9 +19,13 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 	 * ImageGalleryAlbums()
 	 * @note gets ImageGalleryAlbum records for the current page
 	 * @note we don't use the ORM here as the image_gallery module may no longer exist in the code base
+	 * @returns array
 	 */
 	protected function ImageGalleryAlbums() {
 		$list = array();
+		if (!class_exists('ImageGalleryAlbum')) {
+			return $list;
+		}
 		if($id = $this->controller->ID) {
 			$sql = "SELECT a.*, COUNT(i.ID) AS ItemCount FROM ImageGalleryAlbum a"
 				. " LEFT JOIN ImageGalleryItem i ON i.AlbumID = a.ID"

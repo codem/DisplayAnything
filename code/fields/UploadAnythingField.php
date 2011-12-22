@@ -391,7 +391,6 @@ class UploadAnythingField extends ComplexTableField {
 	
 	/**
 	 * GetAssociatedRecord()
-	 * @todo support PK's other than ID
 	 * @note can override this if you wish
 	 * @deprecated
 	 */
@@ -437,18 +436,20 @@ class UploadAnythingField extends ComplexTableField {
 	/**
 	 * FileEditorLink()
 	 * @note provide a link to edit this item
+	 * @returns string
 	 */
 	protected function FileEditorLink($file, $relation, $action = "edit") {
+		$link = "";
 		switch($relation) {
 			case "self":
 				$link = "";
 				break;
 			case "single":
-				$link = Controller::join_links('/' . $this->Link(), 'item/' . $file->ID . '/' . $action);
+				$link = Controller::join_links(Director::baseURL(), $this->Link(), 'item/' . $file->ID . '/' . $action);
 				break;
 			case "gallery":
 				$parts = parse_url($this->Link());
-				$link = Controller::join_links('/' .  $parts['path'] . '/item/' . $this->controller->{$this->name}()->ID . '/DetailForm/field/' . $this->itemsClass . '/item/' . $file->ID . '/' . $action . '/?' . (isset($parts['query']) ? $parts['query'] : ''));
+				$link = Controller::join_links(Director::baseURL(), $parts['path'] . '/item/' . $this->controller->{$this->name}()->ID . '/DetailForm/field/' . $this->itemsClass . '/item/' . $file->ID . '/' . $action . '/?' . (isset($parts['query']) ? $parts['query'] : ''));
 				break;
 			default:
 				throw new Exception("Unhandled relation: {$relation}");
