@@ -83,11 +83,11 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 		//MIGRATION TAB
 		$migrated_value = $this->controller->{$this->name}()->getField('Migrated');
 		if($this->detect_image_gallery_module) {
-			$fields->addFieldToTab('Root', new Tab('ImageGalleryMigration'));
 			if($migrated_value == 0) {
 				//display only if we want to detect imagegallery albums and it's not already migrated
 				$list = $this->ImageGalleryAlbums();
 				if(!empty($list)) {
+					$fields->addFieldToTab('Root', new Tab('ImageGalleryMigration'));
 					$fields->addFieldsToTab(
 						'Root.ImageGalleryMigration',
 						array(
@@ -102,13 +102,9 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 									. "</ul></fieldset></div>")
 						)
 					);
-				} else {
-					$fields->addFieldToTab(
-						'Root.ImageGalleryMigration',
-						new LiteralField('ImageGalleryMigrationMessagePrefix', "<div class=\"field_content display_anything display_anything_migrate\"><h5>Nothing to migrate</h5><p>ImageGallery module migration is switched on but no albums are associated with this page.</p></div>")
-					);
 				}
 			} else if ($migrated_value == 1) {
+				$fields->addFieldToTab('Root', new Tab('ImageGalleryMigration'));
 				$fields->addFieldsToTab(
 					'Root.ImageGalleryMigration',
 					array(
