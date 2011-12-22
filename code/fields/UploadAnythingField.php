@@ -1,8 +1,9 @@
 <?php
 /**
-* UploadAnything
+* UploadAnything, DisplayAnything
 * @copyright Codem 2011
 * @author <a href="http://www.codem.com.au">James Ellis</a>
+* @note UploadAnything is a base abstract set of classes used for building file uploaders, galleries and file managers in Silverstripe 2.4.4+. DisplayAnything extends and overrides functionality provided by UploadAnything to do just that. You can use UploadAnything natively as a simple file uploader and management tool or build your own file management tool off it.
 * @note relies on and uses the Valums File Uploader ( http://github.com/valums/file-uploader )
 * @license BSD
 * @note 
@@ -12,7 +13,7 @@
 		<ul>
 			<li>Security: uses a mimetype map, not file extensions to determine an uploaded file type</li>
 			<li>Integration: uses system settings for upload file size</li>
-			<li>Multiple file uploading in supported browsers (not Internet Explorer)</li>
+			<li>Usability: Multiple file uploading in supported browsers (not Internet Explorer)</li>
 			<li>Drag and Drop in supported browsers (Chrome, Firefox, Safari)
 			<li>XHR file uploading</li>
 			<li>100% Flash Free - no plugin crashes or other futzing with incomprehensible errors!</li>
@@ -29,7 +30,7 @@
 		$uploader = new UploadAnythingField();
 		$uploader
 			->SetTargetLocation('/path/to/some/subdirectory of ASSETS_PATH')
-			->ReplaceFile(FALSE/TRUE)
+			->OverwriteFile(FALSE/TRUE)
 			->SetMimeTypes()
 			->ConfigureUploader( array('action' => '/path/to/upload') );
 	} catch (Exception $e) {
@@ -39,8 +40,6 @@
 
 /**
  * UploadAnythingField()
- * @note the upload handler, that invokes the correct uploader depending on the incoming data
- * @note this is actually a ComplexTableField, just rendered differently
  */
 class UploadAnythingField extends ComplexTableField {
 	private $file = FALSE;
@@ -49,7 +48,7 @@ class UploadAnythingField extends ComplexTableField {
 	private $allowed_file_types = array();
 	private $tmp_location = array();
 	private $upload_file_name = "";
-	private $replace_file = FALSE;
+	private $overwrite_file = FALSE;
 	private $target_location = "";
 	private $configuration = array();
 	protected $itemsClass = FALSE;//used by DisplayAnythingGalleryField for multiple items handling
@@ -57,18 +56,25 @@ class UploadAnythingField extends ComplexTableField {
 	public $resize_method = "CroppedImage";
 	public $thumb_width = 120;
 	public $thumb_height = 120;
+	public $show_help = TRUE;//FALSE to not show Upload Help text
 	
-	public function __construct($controller, $name, $sourceClass, $fieldList = null, $detailFormFields = null, $sourceFilter = "", $sourceSort = "", $sourceJoin = "") {
+	//public $requirementsForPopupCallback = "popupRequirements";
+	
+	public function __construct($controller, $name, $sourceClass, $fieldList = NULL, $detailFormFields = NULL, $sourceFilter = "", $sourceSort = "", $sourceJoin = "") {
 		parent::__construct($controller, $name, $sourceClass, $fieldList, $detailFormFields, $sourceFilter, $sourceSort, $sourceJoin);
 		$this->SetMimeTypes();
-		$this->LoadAdminCSS();
+		self::LoadCSS();
 	}
 	
-	protected function LoadAdminCSS() {
-		Requirements::css("display_anything/css/admin.css");
+	/**
+	 * SetFileKey()
+	 * @note allow override of filekey used in upload, allows replacement to hook into Upload()
+	 */
+	public function SetFileKey($fileKey) {
+		$this->fileKey = $fileKey;
 	}
 	
-	final private function ToBytes($str){
+	public static function ToBytes($str){
 		$val = trim($str);
 		$last = strtolower($str[strlen($str)-1]);
 		switch($last) {
@@ -87,9 +93,11 @@ class UploadAnythingField extends ComplexTableField {
 	 * @note So, why doesn't this use file extensions?
 	 * <blockquote>File Extensions are part of the file name and have no bearing on the contents of the file whatsoever. 'Detecting' file content by matching the characters after the last "." may provide a nice string to work with but in fact lulls the developer into a false sense of security.
 	 		To test this, create a new PHP file, add '<?php print "I am PHP";?>' and save that file as 'image.gif' then upload it using an uploader that allows file Gif files. What happens when you browse to that file ?
-	 		UploadAnything requires your developer (or you) to provide it a map of allowed mimetype. Keys are mimetypes, values are a short blurb about the file. By default it uses the standard mimetypes for JPG, GIF and PNG files.
+	 		UploadAnything requires your developer (or you) to provide it a map of allowed mimetypes. Keys are mimetypes, values are a short blurb about the file. By default it uses the standard mimetypes for JPG, GIF and PNG files.
 	 		If you are uploading a valid file and the UploadAnything MimeType checker is not allowing it, first determine it's mimetype and check against the whitelist you have provided. Some older software will save a file in older, non-standard formats.
 	 		UploadAnything uses the 'type' value provided by the PHP file upload handler for standard uploads that populate $_FILES. For XHR uploads, UploadAnything uses finfo_open() if available, followed by an image mimetype check, followed by mime_content_type (deprecated). If no mimeType can be detected. UploadAnything refuses the upload, which is better than allowing unknown files on your server.
+	 		
+	 		If you are using the DisplayAnything file gallery manager, the Usage tab provides a method of managing allowed file types on a per gallery basis.
 	 		</blockquote>
 	 */
 	final public function SetMimeTypes($mimeTypes = array()) {
@@ -112,7 +120,8 @@ class UploadAnythingField extends ComplexTableField {
 	
 	/**
 	 * LoadUploadHandler()
-	 * @note loads the correct handler depending on incoming data
+	 * @note loads the correct handler depending on incoming data - if $_FILES is present, use the standard file save handler, if the XHR request is present, use the XHR backend
+	 * @returns object
 	 */
 	protected function LoadUploadHandler() {
 		if (isset($_GET[$this->fileKey])) {
@@ -127,25 +136,29 @@ class UploadAnythingField extends ComplexTableField {
 	
 	/**
 	 * SetUploadFileName()
-	 * @param $uploadDirectory wherever uploades are saving at
+	 * @param $uploadPath wherever uploades are saving at
 	 * @param $overwrite if TRUE will overwrite the current same-named file in that directory
 	 */
-	protected function SetUploadFileName($uploadDirectory, $overwrite = FALSE) {
+	protected function SetUploadFileName($uploadPath, $overwrite = FALSE) {
 		$pathinfo = pathinfo($this->file->getName());
 		$filename = $pathinfo['filename'];
 		$ext = $pathinfo['extension'];
-		if(!$overwrite && file_exists($uploadDirectory . "/" . $filename . "." . $ext)) {
-			while (file_exists($uploadDirectory . "/" . $filename . "." . $ext)) {
+		if(!$overwrite && file_exists($uploadPath . "/" . $filename . "." . $ext)) {
+			while (file_exists($uploadPath . "/" . $filename . "." . $ext)) {
 				//while the file exists, prepend a suffix to the file name
 				$filename = "___" . rand(0, 99) . "_" . $filename;
 			}
 		}
 		$this->upload_file_name = str_replace(" ", "_", $filename . "." . $ext);
-		return $uploadDirectory . "/" . $this->upload_file_name;
+		return $uploadPath . "/" . $this->upload_file_name;
 	}
 	
 	public function GetFileName() {
 		return $this->upload_file_name;
+	}
+	
+	public static function GetUploadMaxSize() {
+		return self::ToBytes(ini_get('upload_max_filesize'));
 	}
 	
 	final private function CheckAllowedSize() {
@@ -155,15 +168,18 @@ class UploadAnythingField extends ComplexTableField {
 			throw new Exception('File is empty');
 		}
 		
-		$postSize = $this->ToBytes(ini_get('post_max_size'));
-		$uploadSize = $this->ToBytes(ini_get('upload_max_filesize'));
-		$msize = ($size / 1024 / 1024) . 'M';
-		if ($size > $postSize) {
-			throw new Exception("The server does not allow files of this size to be uploaded ({$msize}). Size Error #1.");
+		$postSize = self::ToBytes(ini_get('post_max_size'));
+		$uploadSize = self::GetUploadMaxSize();
+		$msize = round($size / 1024 / 1024, 2) . 'Mb';
+		$postSizeMb = round($postSize / 1024 / 1024, 2) . 'Mb';
+		$uploadSizeMb = round($uploadSize / 1024 / 1024, 2) . 'Mb';
+		
+		if ($size > $postSize/2) {
+			throw new Exception("The server does not allow files of this size ({$msize}) to be uploaded. Hint: post_max_size is set to {$postSizeMb}");
 		}
 		
-		if ($size > $uploadSize) {
-			throw new Exception("The server does not allow files of this size to be uploaded ({$msize}). Size Error #2.");
+		if ($size > $uploadSize/2) {
+			throw new Exception("The server does not allow files of this size ({$msize}) to be uploaded. Hint: upload_max_filesize is set to {$uploadSizeMb}");
 		}
 		
 		return TRUE;
@@ -181,26 +197,45 @@ class UploadAnythingField extends ComplexTableField {
 		
 		$allowed_list = "";
 		foreach($this->allowed_file_types as $type=>$ext) {
-			$allowed_list .= $type . " (" .strtoupper($ext) . "), ";
+			$allowed_list .= $type . ($ext ? " (" .strtolower($ext) . ")" : "") . ", ";
 		}
 		
-		$mimeType = $this->file->getMimeType();
+		$mimeType = strtolower($this->file->getMimeType());
 		if(!array_key_exists($mimeType, $this->allowed_file_types)) {
-			throw new Exception("The server does not allow files of type '{$mimeType}' to be uploaded. Allowed types: " .  trim($allowed_list, ", "));
+			throw new Exception("This file uploader does not allow files of type '{$mimeType}' to be uploaded. Allowed types: " .  trim($allowed_list, ", "));
 		}
 		return TRUE;
 	}
 	
-	public function ShowReturnValue() {
-		print htmlspecialchars(json_encode($this->returnValue), ENT_NOQUOTES);
+	/**
+	 * UploadResult()
+	 * @note either returns whether the upload has succeeded or prints a JSON encoded string for the upload client
+	 * @returns mixed
+	 */
+	public function UploadResult($return = FALSE) {
+		if($return) {
+			return $this->Success();
+		} else {
+			print htmlspecialchars(json_encode($this->returnValue), ENT_NOQUOTES);
+			exit;
+		}
 	}
 	
+	/**
+	 * GetReturnValue() gets current return value
+	 * @returns mixed
+	 */
 	public function GetReturnValue() {
 		return $this->returnValue;
 	}
-	
+
+
+	/**
+	 * Success() returns TRUE if returnValue is successful
+	 * @returns boolean
+	 */
 	public function Success() {
-		return !empty($this->returnValue['success']);
+		return isset($this->returnValue['success']) && $this->returnValue['success'];
 	}
 	
 	/**
@@ -226,8 +261,12 @@ class UploadAnythingField extends ComplexTableField {
 		return $this;
 	}
 	
-	public function ReplaceFile($replace = FALSE) {
-		$this->replace_file = $replace;
+	/**
+	 * OverwriteFile()
+	 * @note sets the file field to overwrite if a same-named file is found
+	 */
+	public function OverwriteFile($replace = FALSE) {
+		$this->overwrite_file = $replace;
 		return $this;
 	}
 	
@@ -256,8 +295,15 @@ class UploadAnythingField extends ComplexTableField {
 	/**
 	 * CanUpload()
 	 * @note can the current member upload ?
+	 * @todo upload permissions
 	 */
 	protected function CanUpload() {
+	
+		$can = ini_get('file_uploads');
+		if(!$can) {
+			throw new Exception('File uploads are not enabled on this system. To enable them, get your administrator to set file_uploads=1 in php.ini');
+		}
+	
 		$member = Member::currentUser();
 		if(empty($member->ID)) {
 			throw new Exception("You must be signed in to the administration area to upload files");
@@ -265,6 +311,10 @@ class UploadAnythingField extends ComplexTableField {
 		return $member;
 	}
 	
+	/**
+	 * UnlinkFile() unlinks a target file
+	 * @returns boolean
+	 */
 	private function UnlinkFile($target) {
 		if(is_writable($target)) {
 			unlink($target);
@@ -275,7 +325,7 @@ class UploadAnythingField extends ComplexTableField {
 	 * LoadScript()
 	 * @note override this method to use your own CSS. Changing this may break file upload layout.
 	 */
-	protected function LoadScript() {
+	public static function LoadScript() {
 		
 		//have to use bundled jQ or CMS falls over in a screaming heap
 		Requirements::javascript(THIRDPARTY_DIR."/jquery/jquery.js");
@@ -292,18 +342,30 @@ class UploadAnythingField extends ComplexTableField {
 	 * LoadCSS()
 	 * @note override this method to use your own CSS. Changing this may break file upload layout.
 	 */
-	protected function LoadCSS() {
+	public static function LoadCSS() {
 		Requirements::css("display_anything/css/display.css");
 		Requirements::css("display_anything/javascript/file-uploader/client/fileuploader.css");
 	}
+
+	/**
+	 * LoadAdminCSS
+	 * @deprecated use self::LoadCSS()
+	 */
+	public static function LoadAdminCSS() {
+		Requirements::css("display_anything/css/display.css");
+	}
 	
 	/**
-	 * load_jquery()
+	 * LoadAssets()
 	 * @note override this method to use your own jquery lib file. You should provide a recent version or uploads may fail.
 	 */
 	protected function LoadAssets() {
-		$this->LoadScript();
-		$this->LoadCSS();
+		self::LoadScript();
+		self::LoadCSS();
+	}
+	
+	public static function popupRequirements() {
+		self::LoadAssets();
 	}
 	
 	/**
@@ -331,6 +393,7 @@ class UploadAnythingField extends ComplexTableField {
 	 * GetAssociatedRecord()
 	 * @todo support PK's other than ID
 	 * @note can override this if you wish
+	 * @deprecated
 	 */
 	private function GetAssociatedRecord() {
 		$list =  array();
@@ -341,29 +404,45 @@ class UploadAnythingField extends ComplexTableField {
 		);
 	}
 	
+	/**
+	 * FieldPrefix()
+	 * @note HTML to place before the form field HTML
+	 */
 	public function FieldPrefix() {
 		return "";
 	}
 	
+	/**
+	 * FieldSuffix()
+	 * @note HTML to place after the form field HTML
+	 */
 	public function FieldSuffix() {
 		$list = $this->GetFileList();
 		if(empty($list)) {
 			$list = "<div class=\"file-uploader-item\"><p>No files have been associated yet...</p></div>";
 		}
 		$html = "<div class=\"file-uploader-list\">{$list}</div>";
-		$html .= "<div class=\"help\"><div class=\"inner\">"
-				. " <h4>Upload help</h4><ul>"
-				. " <li><strong>Chrome</strong>, <strong>Safari</strong> and <strong>Firefox</strong> support multiple image upload (Hint: 'Ctrl/Cmd + click' to select multiple images in your file chooser)</li>"
-				. "<li>In <strong>Firefox</strong>, Safari and <strong>Chrome</strong> you can drag and drop images onto the upload button</li>"
-				. "<li>Internet Explorer does not support multiple file uploads or drag and drop of files.</li>"
-				. "</ul>"
-				. "</div></div>";
+		if($this->show_help) {
+			$html .= "<div class=\"help\"><div class=\"inner\">"
+					. " <h4>Upload help</h4><ul>"
+					. " <li><strong>Chrome</strong>, <strong>Safari</strong> and <strong>Firefox</strong> support multiple image upload (Hint: 'Ctrl/Cmd + click' to select multiple images in your file chooser)</li>"
+					. "<li>In <strong>Firefox</strong>, Safari and <strong>Chrome</strong> you can drag and drop images onto the upload button</li>"
+					. "<li>Internet Explorer <= 9 does not support multiple file uploads or drag and drop of files.</li>"
+					. "</ul>"
+					. "</div></div>";
+		}
 		return $html;
 	}
 	
-	
+	/**
+	 * FileEditorLink()
+	 * @note provide a link to edit this item
+	 */
 	protected function FileEditorLink($file, $relation, $action = "edit") {
 		switch($relation) {
+			case "self":
+				$link = "";
+				break;
 			case "single":
 				$link = Controller::join_links('/' . $this->Link(), 'item/' . $file->ID . '/' . $action);
 				break;
@@ -379,12 +458,16 @@ class UploadAnythingField extends ComplexTableField {
 	}
 	
 	/**
-	 * Editlink
+	 * GetFileListItem()
+	 * @note returns an HTML string representation of one gallery item
 	 * @note in gallery mode /admin/EditForm/field/ImageGallery/item/1/ DetailForm/field/GalleryItems/item/78/edit?SecurityID=xyz
 	 * @note in single mode /admin/EditForm/field/FeatureImage/item/80/edit?SecurityID=xyz
 	 * DeleteLink
 	 * @note in gallery mode: /admin/EditForm/field/ImageGallery/item/1/DetailForm/field/GalleryItems/item/78/delete?SecurityID=xyz
 	 * @note in single mode /admin/EditForm/field/FeatureImage/item/80/delete?SecurityID=xyz
+	 * @returns string
+	 * @param $file an UploadAnythingFile object or a class extending it
+	 * @param $relation one of self, single or gallery
 	 */
 	protected function GetFileListItem($file, $relation) {
 		$html = "";
@@ -409,8 +492,8 @@ class UploadAnythingField extends ComplexTableField {
 				$thumb = "<img src=\"" . SAPPHIRE_DIR . "/images/app_icons/image_32.gif\" width=\"24\" height=\"32\" alt=\"unknown image\" /><br />(no thumbnail)";
 			}
 		} else {
-			//get a file icon...
-			$thumb = "<img src=\"" . SAPPHIRE_DIR . "/images/app_icons/generic_32.gif\" width=\"24\" height=\"32\" alt=\"file icon\" />";
+			//TODO: get a nice file icon...
+			$thumb = UploadAnythingFile::GetFileIcon();
 		}
 		
 		$html .= "<div class=\"thumb\">{$thumb}</div>";
@@ -426,19 +509,26 @@ class UploadAnythingField extends ComplexTableField {
 	}
 	
 	/**
-	 * FileList()
+	 * GetFileList()
 	 * @note returns an HTML file list. If the method 'UploadAnythingFileList' is implemented in the related dataobject, that is used and must return a string (i.e you author the list), if not, it's rendered as a list of inline items
 	 * @return string
 	 * @todo is "ID" ok to be hardcoded
 	 */
 	private function GetFileList() {
 		$html = "";
-		//TODO: has_one and has_many support
-		if(method_exists('UploadAnythingFileList', $this->controller)) {
-			return $this->$this->controller->UploadAnythingFileList();
+		if(method_exists('DisplayAnythingFileList', $this->controller)) {
+			return $this->{$this->controller}->DisplayAnythingFileList();
 		} else {
 			$relation = $this->DataTypeRelation();
 			switch($relation) {
+				case "self":
+					//self - no need to show anything
+					if($this->controller instanceof File) {
+						$html = $this->GetFileListItem($this->controller, $relation);
+					} else {
+						$html = "DisplayAnything cannot represent this object";
+					}
+					break;
 				case "single";
 					//the relationship: the related dataobject has one of this file
 					$field = $this->name . "ID";
@@ -482,15 +572,10 @@ class UploadAnythingField extends ComplexTableField {
 		}
 		return $html;
 	}
-	
-	/**
-	 * SILVERSTRIPE SPECIFIC @FormField overrides
-	 */
 
 	/**
 	 * Field()
 	 * @note just returns the field. Note that the FileUploader.js handles all the HTML machinations, we just provide a container
-	 * @note to invoke the uploader, just add jQuery('
 	 */
 	function Field() {
 		$id = $this->id();
@@ -504,7 +589,12 @@ class UploadAnythingField extends ComplexTableField {
 		return $html;
 	}
 	
-	function FieldHolder() {
+	/**
+	 * FieldHolder()
+	 * @note returns the form field
+	 * @returns string
+	 */
+	public function FieldHolder() {
 		$this->LoadAssets();
 		
  		$reload = $this->Link('ReloadList');
@@ -520,7 +610,7 @@ class UploadAnythingField extends ComplexTableField {
 		$Field = $this->XML_val('Field');
 		
 		// Only of the the following titles should apply
-		$titleBlock = (!empty($Title)) ? "<label class=\"left\" for=\"{$this->id()}\">$Title - <strong><a href=\"{$reload}\" class=\"reload\">reload</a></strong><a class=\"sortlink\" href=\"{$resort}\">sort</a></label>" : "";
+		$titleBlock = "<label class=\"left\" for=\"{$this->id()}\">Actions: <strong><a href=\"{$reload}\" class=\"reload reload-all\">reload</a></strong><a class=\"sortlink\" href=\"{$resort}\">sort</a></label>";
 		
 		// $MessageType is also used in {@link extraClass()} with a "holder-" prefix
 		$messageBlock = (!empty($Message)) ? "<span class=\"message $MessageType\">$Message</span>" : "";
@@ -528,6 +618,7 @@ class UploadAnythingField extends ComplexTableField {
 		return <<<HTML
 <div class="file-uploader">
 	<div id="$Name" class="field $Type $extraClass">
+			{$titleBlock}
 			<div class="middleColumn">
 				$Field
 				{$this->FieldPrefix()}
@@ -539,68 +630,66 @@ class UploadAnythingField extends ComplexTableField {
 HTML;
 	}
 	
-	final private function IsSiteTree($class) {
-		try {
-			$reflect = new ReflectionClass('SiteTree');
-			$instance  = new $class;
-			return $reflect->isInstance($arg);
-		} catch (Exception $e) {
-			return FALSE;
+	/**
+	 * Replace()
+	 * @note replaces the current file by simply running an Upload() using the 'self' datatype relation
+	 * @returns boolean
+	 */
+	final public function Replace($key = "replace") {
+		if(!empty($_FILES[$key]['tmp_name'])) {
+			$this->SetFileKey($key);
+			return $this->Upload(TRUE);
+		}
+		return TRUE;
+	}
+	
+	
+	/**
+	 * UpdateCurrentRecord()
+	 * @note need to catch any updateFilesystem exceptions here... ignore them. Some of them don't pertain to us
+	 * @note onBeforeWrite() calls this->ReplaceFile() in UploadAnythingFile() which is first called by saveComplexTableField
+	 * 	because of this, we don't update this with the ORM as File->write() will end up calling this again (and again (and again))
+	 * @throws Exception
+	 * @returns TRUE
+	 */
+	protected function UpdateCurrentRecord($uploadDirectory, $filename) {
+		//updating the current file
+		if(!$this->controller instanceof File) {
+			throw new Exception("Replacing file but current controller is not an instance of File");
+		}
+		
+		//just replacing the file - do this and return
+		$filename_path_current = BASE_PATH . '/' . $this->controller->Filename;
+		
+		$query = "UPDATE File SET Name='" . Convert::raw2sql($filename) . "', Filename='" . Convert::raw2sql($uploadDirectory . "/" . $filename) . "' WHERE ID = " . Convert::raw2sql($this->controller->ID);
+		
+		$update = DB::query($query);
+		if($update) {
+			if(is_writable($filename_path_current)) {
+				//remove the old file
+				unlink($filename_path_current);
+			}
+			$this->returnValue = array('success'=>true);
+			return TRUE;
+		} else {
+			throw new Exception("Failed to replace the current file with your upload.");
 		}
 	}
 	
 	/**
 	* Upload
-	* @note handles a file upload to $uploadDirectory
-	* @note saves the file and links it to the dataobject, returning the saved file ID
-	* @todo handle has_one and has_many
+	* @note handles a file upload to $uploadPath. Upload() saves the file and links it to the dataobject, returning the saved file ID. If an error occurs an exception is thrown, causing the correct returnValue to be set.
+	* @param $return if TRUE Upload will return a value rather than exit - which is the default for XHR uploads (after printing a JSON string)
+	* @returns mixed
 	*/
-	final public function Upload() {
+	final public function Upload($return = FALSE) {
 		try {
 		
-			if(empty($_GET['record'])) {
-				throw new Exception("The gallery has not been configured correctly.");
-			}
+			$relation = $this->DataTypeRelation();
 			
-			if(empty($_GET['record']['d'])) {
-				throw new Exception("The related dataobject name was not provided.");
-			}
-			 
-			if(empty($_GET['record']['p']) || !is_array($_GET['record']['p'])) {
-				throw new Exception("The related dataobject primary key fields were not provided. Upload failed. Hint: use AssociateWith() durng field setup");
-			}
-			
-			/**
-			//set the related dataobject
-			$conditional = array();
-			foreach($_GET['record']['p'] as $column=>$value) {
-				$conditional[] = "\"" . Convert::raw2sql($_GET['record']['d']) . "\".\"" . Convert::raw2sql($column) . "\" = '" . Convert::raw2sql($value) . "'";
-			}
-			
-			//upload association target
-			$dataobject = FALSE;
-			try {
-			
-				if($this->IsSiteTree($_GET['record']['d'])) {
-					$target = "SiteTree";
-				} else {
-					$target = $_GET['record']['d']
-				}
-			
-				$dataobject = DataObject::get_one($target, implode(" AND ", $conditional));
-			} catch (Exception $e) {
-				throw new Exception("Query failed with error: " . $e->getMessage());
-			}
-			
-			if(!$dataobject || empty($dataobject)) {
-				throw new Exception("The related dataobject is not valid. This can happen if the gallery type has changed. Upload failed.");
-			}
-			
-			*/
-			
-			//current member if they can upload
+			//current member if they can upload, throws an exception and bails if not
 			$member = $this->CanUpload();
-		
+			
 			//set this->file to the correct handler
 			$this->LoadUploadHandler();
 			
@@ -611,11 +700,10 @@ HTML;
 		
 			//final location of file
 			$targetDirectory = "/" . trim($this->target_location, "/ ");
-			$uploadDirectory = "/" . trim(ASSETS_PATH, "/ ") . $targetDirectory;
-			
-			//print $uploadDirectory;exit;
+			$uploadPath = "/" . trim(ASSETS_PATH, "/ ") . $targetDirectory;
+			$uploadDirectory = ASSETS_DIR . $targetDirectory;
 		
-			if (!is_writable($uploadDirectory)){
+			if (!is_writable($uploadPath)){
 				throw new Exception("Server error. Upload directory '{$uploadDirectory}' isn't writable.");
 			}
 			
@@ -623,36 +711,42 @@ HTML;
 				throw new Exception('No file handler was defined for this upload.');
 			}
 			
-			$this->CheckAllowedType();
-			
 			$this->CheckAllowedSize();
 			
+			$this->CheckAllowedType();
+			
 			//now save the file
-			$target = $this->SetUploadFileName($uploadDirectory, $this->replace_file);
+			$target = $this->SetUploadFileName($uploadPath, $this->overwrite_file);
 			
 			//saves the file to the target directory
 			$this->file->save($target);
 			
 			//here ? then the file save to disk has worked
 			
-			//make a folder record (optionally makes it on the file system as well, although this is done in this->file->save()
-			$folder = Folder::findOrMake($targetDirectory);//without ASSETS_PATH !
-			if(empty($folder->ID)) {
-				$this->UnlinkFile($target);
-				throw new Exception('No folder could be assigned to this file');
-			}
-			
 			try {
+				//catch some internal nerdy errors here so they don't bubble up
+				
 				$filename =  $this->GetFileName();
-			
-				$relation = $this->DataTypeRelation();
+				
+				if($relation == "self" && $this->UpdateCurrentRecord($uploadDirectory, $filename)) {
+					return TRUE;
+				}
+				
+				
+				//make a folder record (optionally makes it on the file system as well, although this is done in this->file->save()
+				$folder = Folder::findOrMake($targetDirectory);//without ASSETS_PATH !
+				if(empty($folder->ID)) {
+					$this->UnlinkFile($target);
+					throw new Exception('No folder could be assigned to this file');
+				}
+				
 				switch($relation) {
 					case "single";
 						
 						$file = new UploadAnythingFile();//TODO - this should match the file type provided
 						$file->Name = $filename;
 						$file->Title = $filename;
-						$file->Filename = $filename;
+						//$file->Filename = $filename;//required ?
 						$file->ShowInSearch = 0;
 						$file->ParentID = $folder->ID;
 						$file->OwnerID = $member->ID;
@@ -681,7 +775,7 @@ HTML;
 						} else if($file instanceof File) {
 							$file->Name = $filename;
 							$file->Title = $filename;
-							$file->Filename = $filename;
+							//$file->Filename = $filename;//required?
 							$file->ShowInSearch = 0;
 							$file->ParentID = $folder->ID;
 							$file->OwnerID = $member->ID;
@@ -711,10 +805,15 @@ HTML;
 			$this->returnValue = array('error' => $e->getMessage());
 		}
 		
-		$this->ShowReturnValue();
-		
+		//trigger a JSON return value
+		return $this->UploadResult($relation == "self");
 	}
 	
+	/**
+	 * GetComponentInfo()
+	 * @note gets the component information for the associated dataobject
+	 * @returns mixed
+	 */
 	final private function GetComponentInfo() {
 		try {
 			return $this->controller->{$this->name}()->{$this->itemsClass}()->getComponentInfo();
@@ -733,7 +832,9 @@ HTML;
 	
 	/**
 	 * SortItem()
-	 * @note HTTP POST API to update sort order in a gallery
+	 * @note HTTP POST API to update sort order in a gallery, returns the number of sorted items
+	 * @note we don't plug into the ORM here to make for faster uploading
+	 * @return integer
 	 */
 	final public function SortItem() {
 		$success = 0;
@@ -753,31 +854,92 @@ HTML;
 		return $success;
 	}
 	
+	/**
+	 * DataTypeRelation()
+	 * @note determines the data type relation of the file to the controller
+	 * @returns string 'self' (replace current file) , 'gallery' (has_many) or 'single' (has_one)
+	 * @throws Exception
+	 */
 	final private function DataTypeRelation() {
+	
+		$controller = get_class($this->controller);
+	
 		if($this->controller->has_one($this->name)) {
 			if($this->itemsClass) {
 				if($this->controller->{$this->name}()->has_many($this->itemsClass)) {
 					return "gallery";
 				} else {
-					throw new Exception("Controller '" . get_class($this->controller) . "' has one '{$this->name}' but '{$this->name}' does not have many '{$this->itemsClass}'");
+					throw new Exception("Controller '{$controller}' has one '{$this->name}' but '{$this->name}' does not have many '{$this->itemsClass}'");
 				}
 			} else {
 				return "single";
 			}
+		} else if($controller == $this->name) {
+			//replacing current file
+			return "self";
 		}
 		
-		throw new Exception("The datatype relation between '{$this->name}' and '" . get_class($this->controller) . "' is neither has_one or has_many. The file could not be saved");
+		throw new Exception("The datatype relation between '{$this->name}' and '{$controller}' is neither self, has_one or has_many. The file could not be saved");
 	}
+
 }
 
+/**
+ * UploadAnythingFileField()
+ * @note returns a simple form file field input but validation and saving is handled by UploadAnythingField
+ */
+class UploadAnythingFileField extends FileField {
 
-class UploadAnythingField_Popup extends ComplexTableField_Popup {
-	function __construct($controller, $name, $fields, $validator, $readonly, $dataObject) {
-		parent::__construct($controller, $name, $fields, $validator, $readonly, $dataObject);
+	public function __construct($name, $title = null, $value = null, $form = null, $rightTitle = null) {
+		parent::__construct($name, $title, $value, $form, $rightTitle);
+	}
+	
+	public function Field() {
+		return $this->createTag(
+			'input', 
+			array(
+				"type" => "file", 
+				"name" => $this->name,
+				"id" => $this->id(),
+				"tabindex" => $this->getTabIndex()
+			)
+		) . 
+		$this->createTag(
+			'input', 
+		  	array(
+		  		"type" => "hidden", 
+		  		"name" => "MAX_FILE_SIZE", 
+		  		"value" => UploadAnythingField::GetUploadMaxSize(),
+				"tabindex" => $this->getTabIndex()
+		  	)
+		);
+	}
+	
+	public function FieldHolder() {
+		$Title = $this->XML_val('Title');
+		$Message = $this->XML_val('Message');
+		$MessageType = $this->XML_val('MessageType');
+		$RightTitle = $this->XML_val('RightTitle');
+		$Type = $this->XML_val('Type');
+		$extraClass = $this->XML_val('extraClass');
+		$Name = $this->XML_val('Name');
+		$Field = $this->XML_val('Field');
 		
+		// $MessageType is also used in {@link extraClass()} with a "holder-" prefix
+		$messageBlock = (!empty($Message)) ? "<span class=\"message $MessageType\">$Message</span>" : "";
+		
+		return <<<HTML
+<div id="$Name" class="field $Type $extraClass">
+	{$messageBlock}
+	<div class="middleColumn">
+		$Field
+		<div class="break"></div>
+	</div>
+</div>
+HTML;
 	}
+	
 }
-
 
 /**
  * UploadAnything_Upload
@@ -891,7 +1053,7 @@ class UploadAnything_Upload_Form {
 	*/
 	function save($path) {
 		if(!is_uploaded_file($_FILES[$this->fileKey]['tmp_name'])) {
-			throw new Exception("The server did not allowed this file to be uploaded.");
+			throw new Exception("The server did not allow this file to be saved as it does not appear to be a file that has been uploaded.");
 		}
 		if(!move_uploaded_file($_FILES[$this->fileKey]['tmp_name'], $path)){
 			throw new Exception('Could not save uploaded file. Can the destination path be written to?');

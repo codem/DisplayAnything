@@ -1,10 +1,17 @@
 /**
  * UploadAnything - javascript behavours for image uploader
+ * @copyright Codem 2011
+ * @see license.txt
  */
 var UploadAnything = function() {};
 UploadAnything.prototype = {
 	debug : false,
 	init: function() {},
+	clog : function(line) {
+		if(typeof console.log != 'undefined') {
+			console.log(line);
+		}
+	},
 	queue : function(id, upload_config) {
 		upload_config.element = jQuery('#' + id)[0];
 		upload_config.debug = this.debug;
@@ -30,11 +37,35 @@ UploadAnything.prototype = {
 			}
 		);
 	},
+	
+	//load up in a full screen greybox
+	load_lightbox : function(elem) {
+		try {
+			var _self = this;
+			var href = jQuery(elem).attr('href');
+			var title = jQuery(elem).attr('title');
+			if(title == '') {
+				title = 'Un-named file';
+			}
+			GB_showFullScreen(
+				title,
+				href,
+				function() {
+					//closing
+					jQuery(elem).parents('.file-uploader').find('a.reload').trigger('click');
+				}
+			);
+		} catch (e) {
+			return false;
+		}
+	},
 	viewer : function() {
+		var _self = this;
+		
+		//drag and drop sorting of items
 		jQuery('.file-uploader-list')
 			.sortable({
 				stop : function() {
-					var _self = this;
 					var items=[];
 					jQuery(this).children('.file-uploader-item').each(
 						function(k,v) {
@@ -45,44 +76,37 @@ UploadAnything.prototype = {
 						}
 					);
 					
+					var list = this;
 					jQuery.post(
-						jQuery(this).parents('.file-uploader').find('a.sortlink').attr('href'),
+						jQuery(list).parents('.file-uploader').find('a.sortlink').attr('href'),
 						{ items : items },
 						function() {
-							jQuery(_self).parents('.file-uploader').find('a.reload').trigger('click');
+							jQuery(list).parents('.file-uploader').find('a.reload').trigger('click');
 						}
 					);
 				}
 			}).disableSelection();
 	
+		//editing items, launch lightbox
 		jQuery('.file-uploader-list .file-uploader-item a.editlink')
-			.click(
+			.live(
+				'click',
 				function(event) {
-				
-					var _self = this;
-					
 					event.preventDefault();
-					
-					var _self = this;
-					var href = jQuery(this).attr('href');
-					var title = jQuery(this).attr('title');
-					if(title == '') {
-						title = 'Un-named file';
-					}
-					
-					GB_showFullScreen(
-						title,
-						href,
-						function() {
-							//closing
-							jQuery(_self).parents('.file-uploader').find('a.reload').trigger('click');
-						}
-					);
+					_self.load_lightbox(this);
 				}
 			);
 		
+		//reload items
+		jQuery('.file-uploader a.reload-all').click(
+			function() {
+				jQuery(this).parents('.file-uploader').find('.qq-upload-list').hide().empty();
+			}
+		);
+		
 		jQuery('.file-uploader a.reload')
-			.click(
+			.live(
+				'click',
 				function(event) {
 					event.preventDefault();
 					jQuery('.qq-upload-drop-area').hide(100);
@@ -102,22 +126,55 @@ UploadAnything.prototype = {
 				}
 			);
 		
+		//delete items
 		jQuery('.file-uploader-list .file-uploader-item a.deletelink')
-			.click(
+			.live(
+				'click',
 				function(event) {
 					event.preventDefault();
-					var _self = this;
-					jQuery.post(
-						jQuery(this).attr('href'),
-						{},
-						function() {
-							jQuery(_self).parents('.file-uploader').find('a.reload').trigger('click');
-						}
-					);
+					try {
+						var _self = this;
+						jQuery.post(
+							jQuery(this).attr('href'),
+							{},
+							function() {
+								jQuery(_self).parents('.file-uploader').find('a.reload').trigger('click');
+							}
+						);
+					} catch(e) {
+						alert(e);
+					}
 				}
 			);
+			
+		//edit usage
+		jQuery('.display_anything_usage').find('select.usage_picker').change(
+			function() {
+				var p = jQuery(this).parents('.display_anything_usage');
+				var o = jQuery(this).children('option:selected');
+				var t = o.text();
+				var title = '';
+				var id = '';
+				var mimetypes = '';
+				if(jQuery(this).val() != '') {
+					var patt = /(.*)\s{1}\((.*)\)/;
+					var matches = t.match(patt);
+					if(typeof matches[1] != 'undefined') {
+						title = matches[1];
+					}
+					if(typeof matches[2] != 'undefined') {
+						mimetypes = matches[2];
+					}
+					id = o.attr('value');
+				}
+				p.find('input.usage_id').val(id);
+				p.find('input.usage_title').val(title);
+				p.find('textarea.usage_mimetypes').val(mimetypes);
+			}
+		);
 	}
 };
+
 Behaviour.register({
 	'#Form_EditForm' : {
 		initialize : function() {
@@ -137,3 +194,15 @@ Behaviour.register({
 		}
 	} // #Form_EditForm
 });
+
+if(jQuery('#Form_EditForm').length == 0) {
+	//handle when loaded within greybox lightbox
+	jQuery(document).ready(
+		function() {
+			var u = new UploadAnything();
+			u.init();
+			u.queue_all();
+			u.viewer();
+		}
+	);
+}
