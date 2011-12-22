@@ -2,6 +2,7 @@
 /**
  * UploadAnythingFile()
  * @note our file class, extends File and provides extra bits and bobs
+ * @note DisplayAnythingFile extends this class and should be used instead, you can extends this class if you like to provide your own File functionality
  */
 class UploadAnythingFile extends File {
 
@@ -31,6 +32,19 @@ class UploadAnythingFile extends File {
 			}
 		}
 		return FALSE;
+	}
+	
+	/**
+	 * updateFilesystem()
+	 * @note override parent File::updateFilesystem can catch its Exceptions
+	 */
+	public function updateFilesystem() {
+		try {
+			parent::updateFilesystem();
+		} catch (Exception $e) {
+			//ignore what happens above
+		}
+		return TRUE;
 	}
 	
 	/**
@@ -176,6 +190,47 @@ class UploadAnythingFile extends File {
 		}
 	}
 	
+	/**
+	 * GetMimeTypes() returns the current mimetypes associated with the gallery this file is in
+	 * @note this will return an empty array if UploadAnything is in single file mode (has_one)
+	 * @return array
+	 */
+	protected function GetMimeTypes() {
+		$mimetypes = array();//use defaults
+		try {
+			$gallery = $this->Gallery();
+			if($gallery && ($usage = $gallery->Usage())) {
+				$mimetypes = explode(",", $usage->MimeTypes);
+				if($extra = $this->Gallery()->ExtraMimeTypes) {
+					$mimetypes = array_merge($mimetypes, implode("," , $extra));
+				}
+			}
+		} catch (Exception $e) {
+			return array();
+		}
+		return array_flip($mimetypes);
+	}
+	
+	/**
+	 * FileReplacementField() returns the file replacement field, used to replace this one file in the gallery
+	 * @return object
+	 */
+	protected function FileReplacementField() {
+		$this->replace_use_self = FALSE;
+		if($this->replace_use_self) {
+			//use the XHR replace field
+			//this is highly experimental and won't work (just yet) - if you want to debug, set TRUE above
+			$replace = new UploadAnythingField($this, get_class($this), 'File');
+			$replace->show_help = FALSE;
+			$replace->SetMimeTypes($this->GetMimeTypes());
+		} else {
+			//standard file input - save handled in onBeforeWrite()
+			$sourceClass = $name = get_class($this);//replacing self
+			$replace = new UploadAnythingFileField("replace", "");
+		}
+		return $replace;
+	}
+	
 	public function getCMSFields() {
 		
 		$fields = parent::getCMSFields();
@@ -198,9 +253,19 @@ class UploadAnythingFile extends File {
 		
 		$meta = $this->GetMeta();
 		
+		$thumbnail = $this->Thumbnail('SetWidth', 400);
+		if(empty($thumbnail)) {
+			$thumbnail = self::GetFileIcon();
+		}
+		
+		$replace = $this->FileReplacementField();
+		
+		$fields->addFieldsToTab('Root.FilePreview', new FileField('dummy_field','dummy_field'));//dummy field to trigger the correct enctype, Form doesn't allow enctype to be manually set if the field is included in our literal field below
+		
 		$fields->addFieldsToTab(
 			'Root.FilePreview',
 			array(
+				//and some meta
 				new LiteralField(
 					'FileMetaData',
 <<<HTML
@@ -210,13 +275,11 @@ class UploadAnythingFile extends File {
 		<tr><th>Width</th><td>{$meta['width']}</td></tr>
 		<tr><th>Height</th><td>{$meta['height']}</td></tr>
 		<tr><th>Type</th><td>{$meta['mimetype']}</td></tr>
+		<tr class="replace"><th>Replace with</th><td class="field">{$replace->FieldHolder()}</td></tr>
+		<tr><th>Thumbnail</th><td>{$thumbnail}</td></tr>
 	</tbody>
 </table>
 HTML
-				),
-				new LiteralField(
-					'FilePreviewLiteral',
-					$this->Thumbnail('SetWidth', 400)
 				)
 			)
 		);
@@ -227,8 +290,6 @@ HTML
 				new DropDownField('OwnerID','File Owner', DataObject::get('Member')->map('ID','Name'), $this->OwnerID)
 			)
 		);
-		
-		
 		
 		$fields->removeByName('Filename');
 		$fields->removeByName('Name');
@@ -244,6 +305,55 @@ HTML
 		$fields->removeByName('GalleryClassName');
 		
 		return $fields;
+	}
+	
+	public static function GetFileIcon($type = "") {
+		return "<img src=\"" . SAPPHIRE_DIR . "/images/app_icons/generic_32.gif\" width=\"24\" height=\"32\" alt=\"file icon\" />";
+	}
+	
+	/**
+	 * ReplaceFile()
+	 * @note replaces the current file on disk for this File object. Will trigger Upload() using an HTTP POST upload (_FILES method)
+	 * @throws Exception
+	 * @return boolean
+	 */
+	private function ReplaceFile() {
+		$key = "replace";
+		if(!empty($_FILES[$key])) {
+			$field = new UploadAnythingField($this, get_class($this), 'File');
+			$field->SetMimeTypes($this->GetMimeTypes());
+			$field->SetFileKey($key);
+			$field->Replace();
+			if(!$field->Success()) {
+				$return = $field->GetReturnValue();
+				throw new Exception($return['error']);
+			} else {
+				return TRUE;
+			}
+		}
+		return FALSE;
+	}
+	
+	/**
+	 * @todo saveComplexTableField is being called here before this is being called, resulting in is_uploaded_file errors
+	 * @note maybe UploadAnythingField should not be a ComplexTableField ?
+	 */
+	public function onBeforeWrite() {
+		parent::onBeforeWrite();
+		try {
+			$this->ReplaceFile();
+		} catch (Exception $e) {
+			$valid = new ValidationResult();
+			$valid->error($e->getMessage());
+			throw new ValidationException($valid, $e->getMessage());
+			return FALSE;
+		}
+		return TRUE;
+	}
+	
+	public function getRequirementsForPopup() {
+		UploadAnythingField::LoadScript();
+		UploadAnythingField::LoadAdminCSS();
 	}
 	
 }

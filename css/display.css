@@ -1,3 +1,10 @@
+/**
+ * DisplayAnything - A Silverstripe file gallery
+ * display.css -  layout for the gallery, editing and file upload handler
+ */
+
+/* - UPLOADER - */
+
 .file-uploader {
 	background-color : #E9E9E9;
 	padding : 6px;
@@ -8,10 +15,15 @@
 	list-style-type : disc;
 }
 
+.right form .file-uploader .field .middleColumn,
 form .file-uploader .field .middleColumn {
 	width : auto;
 	background-color : #fff;
 	padding : 5px;
+}
+
+form #dummy_field {
+	display : none;
 }
 
 form .file-uploader .field .middleColumn .help {
@@ -24,6 +36,11 @@ form .file-uploader .field .middleColumn .help {
 
 form .file-uploader .field .middleColumn .help .inner {
 	padding : 10px;
+}
+
+form .file-uploader .field .middleColumn .help li,
+form .file-uploader .field .middleColumn .help li strong {
+	font-size : 12px;
 }
 
 .file-uploader .sortlink {
@@ -64,20 +81,22 @@ form .file-uploader .field .middleColumn .help .inner {
 }
 
 .file-uploader .qq-upload-button {
-	width : 128px;
-	font-size : 12px;
+	width : auto;
+	font-size : 16px;
 	text-align: center;
 	cursor: default;
 	color: #eee;
-	padding: 8px 0px;
-	border: none;
-	background-color: #000;
-	border-radius : 4px;
+	padding: 12px;
+	border: 3px dashed #666;
+	background-color: #fff;
+	color : #333;
+	text-transform : uppercase;
+	font-variant : small-caps;
+	font-weight : bold;
 }
 
 .file-uploader .qq-upload-button-hover {
-	color : #fff;
-	background-color: #333;
+	background-color : #E9E9E9;
 }
 
 .file-uploader .uploadanything-upload-box {
@@ -88,7 +107,17 @@ form .file-uploader .field .middleColumn .help .inner {
 }
 
 .file-uploader .qq-upload-drop-area {
+	min-height: 70px;
 	height : 120px;
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 2;
+	background: #999;
+	text-align: center;
+	font-size : 18px;
+	font-weight : bold;
+	text-transform : uppercase;
 }
 
 .file-uploader .qq-upload-drop-area span {
@@ -119,7 +148,6 @@ form .file-uploader .field .middleColumn .help .inner {
 
 .file-uploader-list {
 	background-color : #fff;
-	float : left;
 	margin : 1px 0;
 	padding : 3px 0px;
 }
@@ -134,14 +162,15 @@ form .file-uploader .field .middleColumn .help .inner {
 	display : inline-block;
 	vertical-align :top;
 	cursor : pointer;
-	margin : 0 6px 6px 0;
+	margin : 0 4px 4px 0;
 	-moz-box-shadow: 2px 2px 5px rgba(123,123,123,0.3);
 	-webkit-box-shadow: 2px 2px 5px rgba(123,123,123,0.3);
 	box-shadow: 2px 2px 5px rgba(123,123,123,0.3);
 }
 
 .file-uploader-list .file-uploader-item .thumb {
-	min-height : 120px;
+	height : 60px;
+	overflow : hidden;
 }
 
 .file-uploader-list .file-uploader-item .caption p {
@@ -153,16 +182,74 @@ form .file-uploader .field .middleColumn .help .inner {
 	margin : 0 auto;
 }
 
+.display_anything h5 {
+	background-color : #e9e9e9;
+	padding : 6px;
+}
+
+.right form .display_anything .field .middleColumn {
+	background : transparent;
+}
+
+.display_anything_migrate ul {
+	margin : 12px 0 12px 22px;
+}
+
+.display_anything_migrate li {
+	font-size : 12px;
+	list-style-type : disc;
+}
+
+/* - EDITING - */
+
+form#Form_EditForm .upload_anything_field .field_content {
+	width : 100%;
+	margin : 0 0 12px 0;
+	padding : 0;
+}
+
+form#Form_EditForm .upload_anything_field .field_content fieldset {
+	border : 1px solid #ccc;
+	padding : 8px;
+}
+
+form#Form_EditForm .upload_anything_field .field_content fieldset ul {
+	margin-left : 22px;
+}
+
+form#Form_EditForm .upload_anything_field .field_content fieldset ul li {
+	display : list-item;
+	font-size : 12px;
+	list-style-type : square;
+}
+
+form#Form_EditForm .upload_anything_field .field_content fieldset .message {
+	padding : 8px 12px;
+	margin-top : 12px;
+}
+form#Form_EditForm .upload_anything_field .field_content fieldset .message p {
+	margin : 0;
+}
+
 table.uploadanythingfile_meta {
 	width : 100%;
 	border : 1px solid #ccc;
+	border-collapse : collapse;
+	background-color : #fff;
+}
+
+table.uploadanythingfile_meta tr.replace td.field .middleColumn {
+	width : auto;
 }
 
 table.uploadanythingfile_meta th {
 	text-align : right;
 	width : 120px;
+	background-color : #e9e9e9;
+	vertical-align : top;
 }
 table.uploadanythingfile_meta th,
 table.uploadanythingfile_meta td {
 	border : 1px solid #ccc;
+	padding : 6px 9px;
 }

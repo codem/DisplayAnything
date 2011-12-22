@@ -1,7 +1,7 @@
 <?php
 /**
  * DisplayAnythingGalleryField()
- * @note provides specific gallery rendering for a DisplayAnythingGallery
+ * @note provides a gallery conifigration and viewer field in the CMS for a DisplayAnythingGallery
  */
 class DisplayAnythingGalleryField extends UploadAnythingField {
 	
@@ -11,9 +11,7 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 	
 	public function __construct($controller, $name, $sourceClass, $itemsClass = "GalleryItems", $fieldList = null, $detailFormFields = null, $sourceFilter = "", $sourceSort = "", $sourceJoin = "") {
 		parent::__construct($controller, $name, $sourceClass, $fieldList, $detailFormFields, $sourceFilter, $sourceSort, $sourceJoin);
-		
 		$this->itemsClass = $itemsClass;
-		
 		$this->SetMimeTypes();
 	}
 
@@ -70,70 +68,127 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 	}
 	
 	public function FieldHolder() {
-		$html = "<div class=\"display_anything_field upload_anything_field\">";
+	
+		$fields = new Fieldset(array(new TabSet('Root')));
+		$fields->addFieldToTab('Root', new Tab('Files'));
+		$fields->addFieldToTab('Root', new Tab('Details'));
+		$fields->addFieldToTab('Root', new Tab('Usage'));
 		
 		$id = $this->controller->{$this->name}()->getField('ID');
 		
+		//MIGRATION TAB
 		$migrated_value = $this->controller->{$this->name}()->getField('Migrated');
-		
-		$migrator = FALSE;
-		if($this->detect_image_gallery_module && $migrated_value == 0) {
-			//display only if we want to detect imagegallery albums and it's not already migrated
-			$list = $this->ImageGalleryAlbums();
-			if(!empty($list)) {
-				$migrator = TRUE;
-				$html .= "<div class=\"field_content migrate\">";
-				$html .= "<fieldset><h5>Display Anything has detected an ImageGallery album associated with this page</h5>";
-				$html .= "<p>Do you wish to migrate it to your new gallery?<p>";
-				$html .= "<p>Migration notes:</p><ul>";
-				$html .= "<li>The original ImageGallery album will remain untouched.</li>";
-				$html .= "<li>Files will be copied alongside current files, this will allow you to remove the old gallery as and when required.</li>";
-				$html .= "</ul>";
-				$migrate = new DropDownField("{$this->name}[{$id}][MigrateImageGalleryAlbumID]","Choose an album to migrate images from", $list, '', NULL, '[Do not migrate]');
-				$html .= $migrate->FieldHolder();
-				$html .= "</fieldset>";
-				$html .= "</div>";
+		if($this->detect_image_gallery_module) {
+			$fields->addFieldToTab('Root', new Tab('ImageGalleryMigration'));
+			if($migrated_value == 0) {
+				//display only if we want to detect imagegallery albums and it's not already migrated
+				$list = $this->ImageGalleryAlbums();
+				if(!empty($list)) {
+					$fields->addFieldsToTab(
+						'Root.ImageGalleryMigration',
+						array(
+							new LiteralField('ImageGalleryMigrationMessagePrefix',
+								"<div class=\"field_content display_anything display_anything_migrate\">"
+								. "<fieldset><h5>Display Anything has detected an ImageGallery album associated with this page</h5>"),
+							new DropDownField("{$this->name}[{$id}][MigrateImageGalleryAlbumID]","Choose an album to migrate images from", $list, '', NULL, '[Do not migrate]'),
+							new LiteralField('ImageGalleryMigrationMessageSuffix', "<h5>Migration notes</h5><ul>"
+									. "<li>The original ImageGallery album will remain untouched.</li>"
+									. "<li>You can migrate files as many times as you like</li>"
+									. "<li>Files will be copied rather than moved. This will allow you to remove the old gallery as and when required.</li>"
+									. "</ul></fieldset></div>")
+						)
+					);
+				} else {
+					$fields->addFieldToTab(
+						'Root.ImageGalleryMigration',
+						new LiteralField('ImageGalleryMigrationMessagePrefix', "<div class=\"field_content display_anything display_anything_migrate\"><h5>Nothing to migrate</h5><p>ImageGallery module migration is switched on but no albums are associated with this page.</p></div>")
+					);
+				}
+			} else if ($migrated_value == 1) {
+				$fields->addFieldsToTab(
+					'Root.ImageGalleryMigration',
+					array(
+						new LiteralField("ImageGalleryMigrationMessagePrefix", "<div class=\"field_content display_anything_migrate display_anything\"><h5>Complete</h5>"),
+						new CheckboxField("{$this->name}[{$id}][Migrated]","Image Gallery migration complete (uncheck and save to display migration options or if you wish to sync files again.)", TRUE),
+						new LiteralField("ImageGalleryMigrationMessageSuffix", "</div>"),
+					)
+				);
 			}
-		} else if ($migrated_value == 1) {
-			$migrator = TRUE;
 		}
+		//END MIGRATION TAB
 		
-		$html .= "<div class=\"field_content\">";
+
+		//START OLD
 		
-		$html .= "<fieldset><h5>Gallery settings and options</h5>";
+		$fields->addFieldsToTab(
+			'Root.Details',
+			array(
+				new TextField("{$this->name}[{$id}][Title]","Title", $this->controller->{$this->name}()->getField('Title')),
+				new TextareaField("{$this->name}[{$id}][Description]","Description", 3, NULL, $this->controller->{$this->name}()->getField('Description')),
+				new CheckboxField("{$this->name}[{$id}][Visible]","Publicly Visible", $this->controller->{$this->name}()->getField('Visible') == 1 ?  TRUE : FALSE),
+			)
+		);
 		
-		$title = new TextField("{$this->name}[{$id}][Title]","Title", $this->controller->{$this->name}()->getField('Title'));
-		$html .= $title->FieldHolder();
+		$picker = new DropDownField("{$this->name}[{$id}][UsageID]","", DataObject::get('DisplayAnythingGalleryUsage')->map('ID','TitleMap'), $this->controller->{$this->name}()->getField('UsageID'), NULL, '');
+		$picker->addExtraClass('usage_picker');
 		
-		$description = new TextareaField("{$this->name}[{$id}][Description]","Description", 3, NULL, $this->controller->{$this->name}()->getField('Description'));
-		$html .= $description->FieldHolder();
+		$usage_id = new HiddenField("GalleryUsage[{$this->name}][{$id}][ID]");
+		$usage_id->addExtraClass('usage_id');
+		$usage_title = new TextField("GalleryUsage[{$this->name}][{$id}][Title]","Title");
+		$usage_title->addExtraClass('usage_title');
+		$usage_mimetypes = new TextareaField("GalleryUsage[{$this->name}][{$id}][MimeTypes]","Allowed Mimetypes", 3, NULL);
+		$usage_mimetypes->addExtraClass('usage_mimetypes');
 		
-		$visible = new CheckboxField("{$this->name}[{$id}][Visible]","Publicly Visible", $this->controller->{$this->name}()->getField('Visible') == 1 ?  TRUE : FALSE);
-		$html .= $visible->FieldHolder();
+		$fields->addFieldsToTab(
+			'Root.Usage',
+			array(
+				new LiteralField("GalleryUsageBoxStart", "<div class=\"display_anything display_anything_usage\">"),
+				new HeaderField("GalleryUsagePicker","Pick a gallery usage", 5),
+				$picker,
+				new HeaderField("GalleryUsageEntry","Enter new usage or choose a current one to edit", 5),
+				$usage_id, $usage_title, $usage_mimetypes,
+				new LiteralField("GalleryUsageBoxEnd", "</div>"),
+			)
+		);
 		
-		
-		if($migrator && $migrated_value == 1) {
-			//only need to show this post migration
-			$migrated = new CheckboxField("{$this->name}[{$id}][Migrated]","Image Gallery migration complete (uncheck and save to display migration options)", TRUE);
-			$html .= $migrated->FieldHolder();
-		}
-		
-		$html .= "</fieldset></div>";
-		
-		$html .= "<div class=\"field_content\">";
-		
-		$html .= "<fieldset><h5>Gallery Items</h5>";
-		
+		//the actual gallery field, using the parent field to render
+		$html = "<div class=\"display_anything_field upload_anything_field\">";
+		//this container is used to determine child-parent relationship in display.js
 		if(!empty($id)) {
 			$html .= parent::FieldHolder();
 		} else {
 			$html .= "<div class=\"message\"><p>Gallery items can be uploaded after the gallery is saved for the first time</p></div>";
 		}
-		
-		$html .= "</fieldset></div>";
-		
 		$html .= "</div>";
+		
+		$fields->addFieldsToTab(
+			'Root.Files',
+			array(
+				new LiteralField('DisplayAnythingGalleryField', $html)
+			)
+		);
+		
+		$html = "";
+		foreach($fields as $field) {
+			$html .= $field->FieldHolder();
+		}
 		return $html;
+	}
+	
+	protected function SaveUsage($id) {
+		if(!empty($_POST['GalleryUsage'][$this->name][$id]['Title'])) {
+			//adding a new gallery usage
+			$usage = new DisplayAnythingGalleryUsage();
+			$usage->Title = $_POST['GalleryUsage'][$this->name][$id]['Title'];
+			$usage->MimeTypes = (!empty($_POST['GalleryUsage'][$this->name][$id]['MimeTypes']) ? $_POST['GalleryUsage'][$this->name][$id]['MimeTypes'] : '');
+			
+			if(!empty($_POST['GalleryUsage'][$this->name][$id]['ID'])) {
+				$usage->ID = $_POST['GalleryUsage'][$this->name][$id]['ID'];
+			}
+			
+			return $usage->write();
+		}
+		return FALSE;
 	}
 	
 	public function saveInto(DataObject $record) {
@@ -143,6 +198,12 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 			$gallery = $record->{$this->name}();
 			$migrate = FALSE;
 			foreach($_POST[$this->name] as $id=>$data) {
+			
+				if($usage = $this->SaveUsage($id)) {
+					$gallery->UsageID = $usage;
+				} else if(!empty($data['UsageID'])) {
+					$gallery->UsageID = $data['UsageID'];
+				}
 			
 				if(!empty($data['MigrateImageGalleryAlbumID'])) {
 					$migrate = $data['MigrateImageGalleryAlbumID'];
