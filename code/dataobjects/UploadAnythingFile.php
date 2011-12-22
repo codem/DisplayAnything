@@ -319,14 +319,15 @@ HTML
 	 */
 	private function ReplaceFile() {
 		$key = "replace";
-		if(!empty($_FILES[$key])) {
+		if(!empty($_FILES[$key]) && is_uploaded_file($_FILES[$key]['tmp_name'])) {
 			$field = new UploadAnythingField($this, get_class($this), 'File');
 			$field->SetMimeTypes($this->GetMimeTypes());
 			$field->SetFileKey($key);
 			$field->Replace();
-			if(!$field->Success()) {
+			$success = $field->Success();
+			if(!$success) {
 				$return = $field->GetReturnValue();
-				throw new Exception($return['error']);
+				throw new Exception(isset($return['error']) ? $return['error'] : 'Unhandled Error');
 			} else {
 				return TRUE;
 			}
@@ -335,11 +336,12 @@ HTML
 	}
 	
 	/**
+	 * onAfterWrite() handle post write actions, in our case it's possible replacing the file
 	 * @todo saveComplexTableField is being called here before this is being called, resulting in is_uploaded_file errors
 	 * @note maybe UploadAnythingField should not be a ComplexTableField ?
 	 */
-	public function onBeforeWrite() {
-		parent::onBeforeWrite();
+	public function onAfterWrite() {
+		parent::onAfterWrite();
 		try {
 			$this->ReplaceFile();
 		} catch (Exception $e) {
