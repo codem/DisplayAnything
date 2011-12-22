@@ -58,6 +58,11 @@ class UploadAnythingField extends ComplexTableField {
 	public $thumb_height = 120;
 	public $show_help = TRUE;//FALSE to not show Upload Help text
 	
+	//default file and directory permissions
+	//if your web server runs as a specific user, these can be altered to make the rw for only that user
+	public $file_permission = 0644;
+	public $directory_permission = 0755;
+	
 	//public $requirementsForPopupCallback = "popupRequirements";
 	
 	public function __construct($controller, $name, $sourceClass, $fieldList = NULL, $detailFormFields = NULL, $sourceFilter = "", $sourceSort = "", $sourceJoin = "") {
@@ -72,6 +77,24 @@ class UploadAnythingField extends ComplexTableField {
 	 */
 	public function SetFileKey($fileKey) {
 		$this->fileKey = $fileKey;
+		return $this;
+	}
+	
+	/**
+	 * SetPermissions()
+	 */
+	public function SetPermissions($file = 0644, $directory = 0755) {
+		$this->file_permission = $file;
+		$this->directory_permission = $directory;
+		return $this;
+	}
+	
+	public function GetFilePermission() {
+		return $this->file_permission;
+	}
+
+	public function GetDirectoryPermission() {
+		return $this->directory_permission;
 	}
 	
 	public static function ToBytes($str){
@@ -125,10 +148,10 @@ class UploadAnythingField extends ComplexTableField {
 	 */
 	protected function LoadUploadHandler() {
 		if (isset($_GET[$this->fileKey])) {
-			$this->file = new UploadAnything_Upload_XHR($this->fileKey);
+			$this->file = new UploadAnything_Upload_XHR($this->fileKey, $this);
 			$this->file->saveToTmp();//saves raw stream to tmp location
 		} elseif (isset($_FILES[$this->fileKey])) {
-			$this->file = new UploadAnything_Upload_Form($this->fileKey);
+			$this->file = new UploadAnything_Upload_Form($this->fileKey, $this);
 		} else {
 			throw new Exception("No upload handler was defined for this request");
 		}
@@ -202,7 +225,7 @@ class UploadAnythingField extends ComplexTableField {
 		
 		$mimeType = strtolower($this->file->getMimeType());
 		if(!array_key_exists($mimeType, $this->allowed_file_types)) {
-			throw new Exception("This file uploader does not allow files of type '{$mimeType}' to be uploaded. Allowed types: " .  trim($allowed_list, ", "));
+			throw new Exception("This file uploader does not allow files of type '{$mimeType}' to be uploaded. Allowed types: " .  trim($allowed_list, ", ") . ".");
 		}
 		return TRUE;
 	}
@@ -391,7 +414,6 @@ class UploadAnythingField extends ComplexTableField {
 	
 	/**
 	 * GetAssociatedRecord()
-	 * @todo support PK's other than ID
 	 * @note can override this if you wish
 	 * @deprecated
 	 */
@@ -437,8 +459,10 @@ class UploadAnythingField extends ComplexTableField {
 	/**
 	 * FileEditorLink()
 	 * @note provide a link to edit this item
+	 * @returns string
 	 */
 	protected function FileEditorLink($file, $relation, $action = "edit") {
+		$link = "";
 		switch($relation) {
 			case "self":
 				$link = "";
@@ -640,7 +664,7 @@ HTML;
 			$this->SetFileKey($key);
 			return $this->Upload(TRUE);
 		}
-		return TRUE;
+		return FALSE;
 	}
 	
 	
@@ -702,7 +726,15 @@ HTML;
 			$targetDirectory = "/" . trim($this->target_location, "/ ");
 			$uploadPath = "/" . trim(ASSETS_PATH, "/ ") . $targetDirectory;
 			$uploadDirectory = ASSETS_DIR . $targetDirectory;
+			
+			if(!is_writable(ASSETS_PATH)) {
+				throw new Exception("Server error. This site's assets directory is not writable.");
+			}
 		
+			if(!file_exists($uploadPath)) {
+				mkdir($uploadPath, $this->directory_permission, TRUE);
+			}
+			
 			if (!is_writable($uploadPath)){
 				throw new Exception("Server error. Upload directory '{$uploadDirectory}' isn't writable.");
 			}
@@ -965,14 +997,12 @@ class UploadAnything_Upload_XHR {
 	private $fileKey;
 	private $tmp_location;
 	private $tmp_handle;
-	private $filePermission = 0644;
 	
-	public function __construct($fileKey) {
+	private $field;
+	
+	public function __construct($fileKey, $field) {
 		$this->fileKey = $fileKey;
-	}
-	
-	public function SetFilePermission($mode = 0644) {
-		$this->filePermission = $mode;
+		$this->field = $field;
 	}
 	
 	/**
@@ -995,7 +1025,7 @@ class UploadAnything_Upload_XHR {
 			if(!$result) {
 				throw new Exception('Could not save uploaded file. Can the destination path be written to?');
 			}
-			@chmod($path, $this->filePermission);
+			@chmod($path, $this->field->GetFilePermission());
 		} else {
 			throw new Exception('Could not save uploaded file. The uploaded file no longer exists.');
 		}
@@ -1042,9 +1072,11 @@ class UploadAnything_Upload_XHR {
 class UploadAnything_Upload_Form {
 
 	private $fileKey;
+	private $field;
 	
-	public function __construct($fileKey) {
+	public function __construct($fileKey, $field) {
 		$this->fileKey = $fileKey;
+		$this->field = $field;
 	}
 	
 	/**
@@ -1058,6 +1090,8 @@ class UploadAnything_Upload_Form {
 		if(!move_uploaded_file($_FILES[$this->fileKey]['tmp_name'], $path)){
 			throw new Exception('Could not save uploaded file. Can the destination path be written to?');
 		}
+		
+		@chmod($path, $this->field->GetFilePermission());
 		return TRUE;
 	}
 	function getName() {

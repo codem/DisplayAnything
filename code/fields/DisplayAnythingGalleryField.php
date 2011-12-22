@@ -19,10 +19,11 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 	 * ImageGalleryAlbums()
 	 * @note gets ImageGalleryAlbum records for the current page
 	 * @note we don't use the ORM here as the image_gallery module may no longer exist in the code base
+	 * @returns array
 	 */
 	protected function ImageGalleryAlbums() {
 		$list = array();
-		if (!class_exists('ImageGalleryAlbums')) {
+		if (!class_exists('ImageGalleryAlbum')) {
 			return $list;
 		}
 		if($id = $this->controller->ID) {
@@ -82,11 +83,11 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 		//MIGRATION TAB
 		$migrated_value = $this->controller->{$this->name}()->getField('Migrated');
 		if($this->detect_image_gallery_module) {
-			$fields->addFieldToTab('Root', new Tab('ImageGalleryMigration'));
 			if($migrated_value == 0) {
 				//display only if we want to detect imagegallery albums and it's not already migrated
 				$list = $this->ImageGalleryAlbums();
 				if(!empty($list)) {
+					$fields->addFieldToTab('Root', new Tab('ImageGalleryMigration'));
 					$fields->addFieldsToTab(
 						'Root.ImageGalleryMigration',
 						array(
@@ -101,13 +102,9 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 									. "</ul></fieldset></div>")
 						)
 					);
-				} else {
-					$fields->addFieldToTab(
-						'Root.ImageGalleryMigration',
-						new LiteralField('ImageGalleryMigrationMessagePrefix', "<div class=\"field_content display_anything display_anything_migrate\"><h5>Nothing to migrate</h5><p>ImageGallery module migration is switched on but no albums are associated with this page.</p></div>")
-					);
 				}
 			} else if ($migrated_value == 1) {
+				$fields->addFieldToTab('Root', new Tab('ImageGalleryMigration'));
 				$fields->addFieldsToTab(
 					'Root.ImageGalleryMigration',
 					array(
@@ -215,6 +212,7 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 				if($id == 0 || $id == $gallery->ID) {
 					//creating this gallery or updating it...
 					$gallery->Title = !empty($data['Title']) ? $data['Title'] : '';	
+					$gallery->Description = !empty($data['Description']) ? $data['Description'] : '';	
 					$gallery->Visible = !empty($data['Visible']) ?  1 : 0;
 					$gallery->Migrated = !empty($data['Migrated']) ?  1 : 0;
 					if($id = $gallery->write()) {
