@@ -202,7 +202,7 @@ class UploadAnythingField extends ComplexTableField {
 		
 		$mimeType = strtolower($this->file->getMimeType());
 		if(!array_key_exists($mimeType, $this->allowed_file_types)) {
-			throw new Exception("This file uploader does not allow files of type '{$mimeType}' to be uploaded. Allowed types: " .  trim($allowed_list, ", "));
+			throw new Exception("This file uploader does not allow files of type '{$mimeType}' to be uploaded. Allowed types: " .  trim($allowed_list, ", ") . ".");
 		}
 		return TRUE;
 	}
@@ -641,7 +641,7 @@ HTML;
 			$this->SetFileKey($key);
 			return $this->Upload(TRUE);
 		}
-		return TRUE;
+		return FALSE;
 	}
 	
 	
