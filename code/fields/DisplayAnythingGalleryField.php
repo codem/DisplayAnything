@@ -212,6 +212,7 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 				if($id == 0 || $id == $gallery->ID) {
 					//creating this gallery or updating it...
 					$gallery->Title = !empty($data['Title']) ? $data['Title'] : '';	
+					$gallery->Description = !empty($data['Description']) ? $data['Description'] : '';	
 					$gallery->Visible = !empty($data['Visible']) ?  1 : 0;
 					$gallery->Migrated = !empty($data['Migrated']) ?  1 : 0;
 					if($id = $gallery->write()) {
