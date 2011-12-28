@@ -4,16 +4,18 @@ A file upload and gallery tool for Silverstripe 2.4+. It's a simple replacement 
 
 DisplayAnything implements Ajax Upload (http://valums.com/ajax-upload/), a third party file upload handler.
 
+The base level class is called UploadAnything which provides the upload functionality.
+
 ## Features ##
-+ Handle file uploads via XHR or standard uploads.
++ Handles file uploads via XHR or standard uploads.
 + Security: uses a configurable mimetype map, not file extensions, to determine an uploaded file type
 + Integration: uses PHP system settings for upload file size
-+ Multiple file uploading in supported browsers (Note: not supported in Internet Explorer)
++ Multiple file uploading in supported browsers (Note: not yet supported by Internet Explorer)
 + Drag and Drop in supported browsers (Chrome, Firefox, Safari and possibly Opera)
 + XHR file uploading
-+ Has Zero Dependencies on the Silverstripe modules ImageGallery, DataObjectManager and Uploadify
++ Has Zero Dependencies on the third-party Silverstripe modules ImageGallery, DataObjectManager and Uploadify
 + 100% Flash Free - no plugin crashes, HTTP errors, I/O errors or other futzing with incomprehensible Flash errors!
-+ Import ImageGallery albums and their items to a gallery
++ Import ImageGallery album items to a gallery
 + Uses jQuery bundled with Silverstripe
 + Well documented & clean code with extendable classes and overrideable methods
 + $_REQUEST not used
@@ -21,22 +23,21 @@ DisplayAnything implements Ajax Upload (http://valums.com/ajax-upload/), a third
 + Drag and drop sorting of images & files in the gallery
 + File upload progress with cancel option
 
+## State ##
++ Currently considered beta although we're eating our own dogfood and are happy with general stability - i.e test in a development setting, be aware it's in Beta and deploy if you are happy with the module.
+
+## Bugs ##
+Probably. Check the <a href="https://github.com/codem/DisplayAnything/issues">Issues list</a> and add feature requests and issues there.
+
 ## TODO ##
 + Client side reminder of file size (per Valums file uploader spec)
 + Testing of uploads in IE8+
 
 ## Why? ##
-I built DisplayAnything after implementing the ImageGallery module on a large, complex SilverStripe site.
-This resulted in me spending most of my time debugging odd pieces of DataObjectManager code and head scratching Uploadify errors. 
-I decided 'never again' and DisplayAnything was born.
-It's now available for you to use.
-
-## Bugs ##
-Probably. Check the Issues list.
+DisplayAnything was developed after implementing the ImageGallery module on a large, complex SilverStripe site which resulted in valuable time spent debugging DataObjectManager code and head-scratching Uploadify errors. Codem developed DisplayAnything to be a functional CMS replacement for the ImageGallery module.
 
 ## MimeTypes ##
-DisplayAnything comes preconfigured to accept image uploads (GIF, PNG, JPG). When setting up the field you can pass an array of mimetypes to override/clear these defaults.
-See the examples below for more information on mimetype configuration.
+DisplayAnything comes preconfigured to accept image uploads (GIF, PNG, JPG). When used as a gallery, a usage tab is made available where you can add and edit the current gallery usage.
 
 ## Installing ##
 <ol>
@@ -57,8 +58,8 @@ See the examples below for more information on mimetype configuration.
 </ol>
 
 ## Migrating items from the ImageGallery gallery module ##
-If DisplayAnything detects an  ImageGallery Album associated with the current page it will prompt if you wish to import images. Migration is additive (does not destroy the old gallery or items).
-Choose a gallery from the menu and save the page, successfully imported items will appear in the file list. You can retry the migration at any time.
+If DisplayAnything detects an  ImageGallery Album associated with the current page it will provide an Image Gallery Migration tab containing migration options. Migrated mages are copied rather than moved.
+You can choose a albums from the list of album(s) provided and save the page, successfully imported items will appear in the file list. You can retry the migration at any time.
 
 Once migration is complete you can remove the Image Gallery module as and when you wish.
 
@@ -83,30 +84,26 @@ class MyPage extends Page {
 			'SomeGallery',
 			'DisplayAnythingGallery'
 		);
-		$gallery
-			->SetMimeTypes()//provide a list of allowed mimetypes here
-			->SetTargetLocation('/some/path/to/a/gallery');//relative to ASSETS_PATH
+		$gallery->SetTargetLocation('/some/path/to/a/gallery');//relative to ASSETS_PATH
 		$fields->addFieldsToTab('Root.Content.Gallery', array($gallery));
 		
 		
 		//SINGLE field - with a test to see if the page has been saved
 		if(!empty($this->ID)) {
 			$uploader = new UploadAnythingField($this, 'FeatureImage','Image');
-			$uploader->SetMimeTypes(array('text/plain'));//this uploader only allowes plain text uploads
+			$uploader->SetMimeTypes(array('text/plain'));//this single file uploader only allows plain text uploads
 		} else {
 			$uploader = new LiteralField("PageNotSavedYet", "<p>The file may be uploaded after saving this page.</p>");
 		}
 		$fields->addFieldsToTab('Root.Content.Image', array($uploader));
 		
-		//VIDEO gallery (YouTube only) - a simple extension to the default gallery
+		//YOUTUBE VIDEO gallery - a simple extension to the default gallery
 		$gallery = new DisplayAnythingGalleryField(
 			$this,
 			'SomeVideoGallery',
-			'DisplayAnythingVideoGallery'
+			'DisplayAnythingYouTubeGallery'
 		);
-		$gallery
-			->SetMimeTypes()
-			->SetTargetLocation('videogallery');
+		$gallery->SetTargetLocation('videogallery');
 		$fields->addFieldToTab('Root.Content.Videos', $gallery);
 		
 		return $fields;
@@ -114,7 +111,7 @@ class MyPage extends Page {
 }
 ```
 ## Frontend Templates ##
-+ Inumerable gallery plugins exist for lists and viewing of images (Fancybox is good and open source). DisplayAnything stays light and does not bundle any of these galleries. It's up to you to implement the gallery the way you want it (this saves you having to undo & override any defaults DisplayAnything may set).
++ Inumerable gallery plugins with varying licenses exist for image & file lists and viewing of images in a lightbox (Fancybox is good and open source). DisplayAnything stays light and does not bundle any of these galleries. It's up to you to implement the gallery the way you want it (this saves you having to undo & override any defaults DisplayAnything may set).
 Here's an example Page control you may like to use as a starting point:
 
 ```php
@@ -138,9 +135,6 @@ Here's an example Page control you may like to use as a starting point:
 	<% end_control %>
 <% end_if  %>
 ```
-
-## State ##
-+ Currently considered beta although we're eating our own dogfood and are happy with general stability - i.e test in a development setting before deploying.
 
 ## Support ##
 + Twitter : <a href="http://twitter.com/_codem">@_codem</a>
