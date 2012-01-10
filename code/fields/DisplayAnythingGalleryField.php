@@ -23,9 +23,7 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 	 */
 	protected function ImageGalleryAlbums() {
 		$list = array();
-		if (!class_exists('ImageGalleryAlbum')) {
-			return $list;
-		}
+		
 		if($id = $this->controller->ID) {
 			$sql = "SELECT a.*, COUNT(i.ID) AS ItemCount FROM ImageGalleryAlbum a"
 				. " LEFT JOIN ImageGalleryItem i ON i.AlbumID = a.ID"
