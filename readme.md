@@ -139,7 +139,7 @@ Here's an example Page control you may like to use as a starting point:
 
 ## Support ##
 + Twitter : <a href="http://twitter.com/_codem">@_codem</a>
-+ Github Issues list please for bug reports
++ Github <a href="https://github.com/codem/DisplayAnything/issues">Issues list please for bug reports</a>
 + Need extra help? <a href="http://codem.com.au">Codem can provide commercial support for this and other Silverstripe projects</a>
 
 ## Licenses ##
