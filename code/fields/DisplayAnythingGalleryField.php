@@ -19,6 +19,11 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 	 * ImageGalleryAlbums()
 	 * @note gets ImageGalleryAlbum records for the current page
 	 * @note we don't use the ORM here as the image_gallery module may no longer exist in the code base
+	 * @note this will return an empty list if
+	 * 			1. There are no ImageGalleryAlbum or ImageGalleryItem tables in the database
+	 * 			2. There are but no Albums are related to the current page
+	 * 			3. There is no current page (the controller->ID)
+	 * 			Rather than show an error, the CMS tab should not show at all as it would be irritating for those who are not doing migrations
 	 * @returns array
 	 */
 	protected function ImageGalleryAlbums() {
@@ -28,13 +33,15 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 			$sql = "SELECT a.*, COUNT(i.ID) AS ItemCount FROM ImageGalleryAlbum a"
 				. " LEFT JOIN ImageGalleryItem i ON i.AlbumID = a.ID"
 				. " WHERE a.ImageGalleryPageID = {$id}";
-			if($results = DB::Query($sql)) {
-				foreach($results as $record) {
-					if(!empty($record['ID'])) {
-						$list[$record['ID']] = "  " . $record['AlbumName'] . " - {$record['ItemCount']} image(s)";
-					}
+			$results = DB::Query($sql, FALSE);
+			if(!$results || !$results->valid()) {
+				//just return an empty list so as not to show the migration tab
+				return array();
+			}
+			foreach($results as $record) {
+				if(!empty($record['ID'])) {
+					$list[$record['ID']] = "  " . $record['AlbumName'] . " - {$record['ItemCount']} image(s)";
 				}
-				return $list;
 			}
 		}
 		return $list;
@@ -97,6 +104,7 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 									. "<li>The original ImageGallery album will remain untouched.</li>"
 									. "<li>You can migrate files as many times as you like</li>"
 									. "<li>Files will be copied rather than moved. This will allow you to remove the old gallery as and when required.</li>"
+									. "<li>If the ImageGalleryAlbum or ImageGalleryItem tables are removed from the database, this tab will no longer appear.</li>"
 									. "</ul></fieldset></div>")
 						)
 					);

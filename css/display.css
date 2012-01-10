@@ -201,6 +201,16 @@ form .file-uploader .field .middleColumn .help li strong {
 }
 
 /* - EDITING - */
+#right form#Form_EditForm .upload_anything_field .error,
+#right form#Form_EditForm .upload_anything_field .message {
+	margin : 0 0 1em 0;
+	width : auto;
+}
+#right form#Form_EditForm .upload_anything_field .error p,
+#right form#Form_EditForm .upload_anything_field .message p {
+	margin : 0;
+	font-weight : normal;
+}
 
 form#Form_EditForm .upload_anything_field .field_content {
 	width : 100%;
