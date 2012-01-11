@@ -91,7 +91,7 @@ class MyPage extends Page {
 		//SINGLE field - with a test to see if the page has been saved
 		//NOTE: that single field uploads can be done with the core Silverstripe FileField (and is probably more stable at this point)
 		if(!empty($this->ID)) {
-			$uploader = new UploadAnythingField($this, 'SomeFile','Image');
+			$uploader = new UploadAnythingField($this, 'SomeFile','File');
 			$uploader->SetMimeTypes(array('text/plain'));//this single file uploader only allows plain text uploads
 		} else {
 			$uploader = new LiteralField("PageNotSavedYet", "<p>The file may be uploaded after saving this page.</p>");
@@ -139,7 +139,7 @@ Here's an example Page control you may like to use as a starting point:
 
 ## Support ##
 + Twitter : <a href="http://twitter.com/_codem">@_codem</a>
-+ Github Issues list please for bug reports
++ Github <a href="https://github.com/codem/DisplayAnything/issues">Issues list please for bug reports</a>
 + Need extra help? <a href="http://codem.com.au">Codem can provide commercial support for this and other Silverstripe projects</a>
 
 ## Licenses ##
