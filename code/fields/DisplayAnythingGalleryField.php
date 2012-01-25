@@ -215,6 +215,10 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 	 * @note if the controller is a SiteTree then return all pages associated with it
 	 * @param $id the gallery id
 	 * @param $raw if TRUE return as a DataObjectSet else return an array or boolean FALSE on error
+	 * @todo the DataObject::get($class, $name = $id) needs to be looked at:
+	 			1. what happens with multiple tables that contain the same column name ?
+	 			2. using "`Page`.`{$name}` = " . $id assumes the gallery is attached to Page
+	 			3. using "`{$class}`.`{$name}` = " . $id assumes that the controller class contains the column and not a parent class
 	 */
 	protected function GetPages($id, $raw = FALSE) {
 		$list = FALSE;
@@ -222,8 +226,8 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 			$class = get_class($this->controller);
 			$current = $this->controller->ID;
 			$name = $this->name . "ID";
+			$pages = DataObject::get($class, "`{$name}` = " . $id);
 			//$pages = DataObject::get($class, "`{$class}`.`{$name}` = " . $id);
-			$pages = DataObject::get($class, "`Page`.`{$name}` = " . $id);
 			if($pages) {
 				if($raw) {
 					return $pages;
