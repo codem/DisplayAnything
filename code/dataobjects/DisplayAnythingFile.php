@@ -8,6 +8,7 @@ class DisplayAnythingFile extends UploadAnythingFile {
 	
 	static $has_one = array(
 		'Gallery' => 'DisplayAnythingGallery',
+		'AlternateImage' => 'Image',
 	);
 	
 	static $defaults = array(
