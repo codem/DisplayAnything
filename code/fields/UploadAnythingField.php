@@ -169,7 +169,7 @@ class UploadAnythingField extends ComplexTableField {
 		if(!$overwrite && file_exists($uploadPath . "/" . $filename . "." . $ext)) {
 			while (file_exists($uploadPath . "/" . $filename . "." . $ext)) {
 				//while the file exists, prepend a suffix to the file name
-				$filename = "___" . rand(0, 99) . "_" . $filename;
+				$filename = rand(0, 500) . "_" . $filename;
 			}
 		}
 		$this->upload_file_name = str_replace(" ", "_", $filename . "." . $ext);
@@ -508,7 +508,9 @@ class UploadAnythingField extends ComplexTableField {
 		
 		$thumb = "[no file found]";
 		
-		if($is_image) {
+		if(!file_exists($path)) {
+			$thumb = "<br />File does not exist<br />";
+		} else if($is_image) {
 			$tag = $file->Thumbnail($this->resize_method, $this->thumb_width, $this->thumb_height);
 			if($tag) {
 				$thumb = $tag;
