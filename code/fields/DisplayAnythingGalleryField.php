@@ -174,6 +174,26 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 			)
 		);
 		
+		
+		/**
+		 * Finally, if the controller is a page and this gallery is shared among pages, allow the user to control
+		 * which pages it appears on
+		 * This occurs when the page is duplicated and the gallery should not be shared
+		 */
+		if($pages = $this->GetPages($id)) {
+			if(count($pages) > 1) {
+				//some duplicates.. show a tab
+				$fields->addFieldsToTab(
+					'Root.Pages',
+					array(
+						new LiteralField('SharedPagesInformation', "<p>This gallery is being shared by other pages on this site. Use the checkboxes below to control associated pages. Changes to this gallery will appear on all associated pages.</p>"),
+						new CheckBoxSetField("SharedPages[{$this->name}][{$id}]", "", $pages, array_keys($pages)),
+					)
+				);
+			}
+		}
+		
+		
 		$html = "";
 		foreach($fields as $field) {
 			$html .= $field->FieldHolder();
@@ -181,6 +201,81 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 		return $html;
 	}
 	
+	/**
+	 * ControllerIsSiteTree()
+	 * @note determine if the current controller is an instance of SiteTree
+	 * @return boolean
+	 */
+	protected function ControllerIsSiteTree() {
+		return $this->controller instanceof SiteTree;
+	}
+	
+	/**
+	 * GetPages()
+	 * @note if the controller is a SiteTree then return all pages associated with it
+	 * @param $id the gallery id
+	 * @param $raw if TRUE return as a DataObjectSet else return an array or boolean FALSE on error
+	 */
+	protected function GetPages($id, $raw = FALSE) {
+		$list = FALSE;
+		if($id > 0 && $this->ControllerIsSiteTree()) {
+			$class = get_class($this->controller);
+			$current = $this->controller->ID;
+			$name = $this->name . "ID";
+			//$pages = DataObject::get($class, "`{$class}`.`{$name}` = " . $id);
+			$pages = DataObject::get($class, "`Page`.`{$name}` = " . $id);
+			if($pages) {
+				if($raw) {
+					return $pages;
+				} else {
+					foreach($pages as $page) {
+						$list[$page->ID] = ($page->MenuTitle != "" ? $page->MenuTitle : $page->Title) . ($current == $page->ID ? " (current page)" : "");
+					}
+				}
+			}
+		}
+		return $list;
+	}
+	
+	/**
+	 * SaveSharedPages()
+	 * @note if the controller is a SiteTree, ensure that shared pages are saved correctly
+	 * @note a gallery must be linked to at least one page. If they are competely unlinked then the current page will be associated with the gallery
+	 * @return boolean
+	 * @param $id the gallery id
+	 */
+	protected function SaveSharedPages($id) {
+		if($this->ControllerIsSiteTree()) {
+			$list = array();
+			if($pages = $this->GetPages($id, TRUE)) {
+			
+				//the gallery must be saved against at least one page
+				$savelist = (!empty($_POST['SharedPages'][$this->name][$id]) && is_array($_POST['SharedPages'][$this->name][$id]) ? $_POST['SharedPages'][$this->name][$id] : array($this->controller->ID));
+				
+				//cycle through current associated pages
+				foreach($pages as $page) {
+					//is this page NOT in the save list ?
+					if(!in_array($page->ID, $savelist)) {
+						//remove the association with this page
+						$field = $this->name . "ID";
+						$page->$field = 0;
+						$page->write();
+					}
+				}
+				
+				return TRUE;
+			}
+		}
+		
+		return FALSE;
+	}
+	
+	/**
+	 * SaveUsage()
+	 * @note saves gallery usage info
+	 * @param $id the gallery id
+	 * @return boolean
+	 */
 	protected function SaveUsage($id) {
 		if(!empty($_POST['GalleryUsage'][$this->name][$id]['Title'])) {
 			//adding a new gallery usage
@@ -204,6 +299,8 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 			$gallery = $record->{$this->name}();
 			$migrate = FALSE;
 			foreach($_POST[$this->name] as $id=>$data) {
+			
+				$this->SaveSharedPages($id);
 			
 				if($usage = $this->SaveUsage($id)) {
 					$gallery->UsageID = $usage;
