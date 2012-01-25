@@ -99,9 +99,12 @@ class UploadAnythingFile extends File {
 		if($this->meta) {
 			return $this->meta;
 		}
-	
+		
 		$path = $this->getFullPath();
+		
 		$this->meta = array();
+		$this->meta['name'] = $this->Name;
+		$this->meta['exists'] = file_exists($path);
 		$this->meta['width'] = '';
 		$this->meta['height'] = '';
 		$this->meta['size'] = $this->getSize();
@@ -200,8 +203,11 @@ class UploadAnythingFile extends File {
 		try {
 			$gallery = $this->Gallery();
 			if($gallery && ($usage = $gallery->Usage())) {
-				$mimetypes = explode(",", $usage->MimeTypes);
-				if($extra = $this->Gallery()->ExtraMimeTypes) {
+				$list = trim($usage->MimeTypes);
+				if($list != "") {
+					$mimetypes = explode(",", $usage->MimeTypes);
+				}
+				if(($extra = $this->Gallery()->ExtraMimeTypes) && $extra != "") {
 					$mimetypes = array_merge($mimetypes, implode("," , $extra));
 				}
 			}
@@ -248,6 +254,7 @@ class UploadAnythingFile extends File {
 				new TextField('ExternalURL', 'External link (e.g http://example.com/landing/page) - will override Internal Page Link', $this->ExternalURL),
 				new TextField('Caption', 'File Caption', $this->Caption),
 				new TextareaField('Description', 'File Description', 5, NULL, $this->Description),
+				new ImageField('AlternateImage', 'Alternate Image (optional)'),
 			)
 		);
 		
@@ -256,6 +263,11 @@ class UploadAnythingFile extends File {
 		$thumbnail = $this->Thumbnail('SetWidth', 400);
 		if(empty($thumbnail)) {
 			$thumbnail = self::GetFileIcon();
+		}
+		
+		$warning = "";
+		if(!$meta['exists']) {
+			$warning = "<p>This file does not exist, it may have been deleted.</p>";
 		}
 		
 		$replace = $this->FileReplacementField();
@@ -269,8 +281,10 @@ class UploadAnythingFile extends File {
 				new LiteralField(
 					'FileMetaData',
 <<<HTML
+{$warning}
 <table class="uploadanythingfile_meta">
 	<tbody>
+		<tr><th>Name</th><td>{$meta['name']}</td></tr>
 		<tr><th>Size</th><td>{$meta['size']}</td></tr>
 		<tr><th>Width</th><td>{$meta['width']}</td></tr>
 		<tr><th>Height</th><td>{$meta['height']}</td></tr>
