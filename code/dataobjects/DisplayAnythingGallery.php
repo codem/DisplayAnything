@@ -82,7 +82,7 @@ class DisplayAnythingGallery extends DataObject {
 	);
 	
 	static $defaults = array(
-		'Visible' => 0,
+		'Visible' => 1,
 		'Migrated' => 0,
 	);
 	
