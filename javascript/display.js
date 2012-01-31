@@ -5,23 +5,30 @@
  */
 var UploadAnything = function() {};
 UploadAnything.prototype = {
+	uploader : null,
+	uploads : 0,
 	debug : false,
 	init: function() {},
-	clog : function(line) {
-		if(typeof console.log != 'undefined') {
-			console.log(line);
-		}
-	},
 	queue : function(id, upload_config) {
+		var _self = this;
 		upload_config.element = jQuery('#' + id)[0];
 		upload_config.debug = this.debug;
+		upload_config.maxConnections = 3;//@todo configurable
 		upload_config.onSubmit = function(id, fileName) {
 			jQuery(this.element).find('.qq-upload-list').show();
+			_self.uploads++;
 		};
 		upload_config.onComplete = function(id, fileName, responseJSON) {
-			jQuery(this.element).parents('.file-uploader:first').find('a.reload').trigger('click');
+			_self.uploads--;
+			_self.check_completion(this);
 		};
-		var u = new qq.FileUploader(upload_config);
+		this.uploader = new qq.FileUploader(upload_config);
+	},
+	check_completion : function(FileUploader) {
+		var do_reload = this.uploads <= 0;
+		if(do_reload) {
+			jQuery(FileUploader.element).parents('.file-uploader:first').find('a.reload').trigger('click');
+		}
 	},
 	queue_all : function() {
 		var _self = this;
@@ -37,7 +44,6 @@ UploadAnything.prototype = {
 			}
 		);
 	},
-	
 	//load up in a full screen greybox
 	load_lightbox : function(elem) {
 		try {
