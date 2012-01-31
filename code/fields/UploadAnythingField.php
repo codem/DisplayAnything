@@ -526,8 +526,8 @@ class UploadAnythingField extends ComplexTableField {
 		$html .= "<div class=\"caption\"><p>" . substr($file->Title, 0, 16)  . "</p></div>";
 		$html .= "</a>";
 		$html .= "<div class=\"tools\">";
-		$html .= "<a class=\"deletelink\" href=\"{$deletelink}\"><img src=\"/" . CMS_DIR . "/images/delete.gif\" alt=\"delete\" /></a>";
-		$html .= "<img src=\"/display_anything/images/sort.png\" title=\"drag and drop to sort\" alt=\"drag and drop to sort\" /></a>";
+		$html .= "<a class=\"deletelink\" href=\"{$deletelink}\"><img src=\"" . Director::BaseURL() . CMS_DIR . "/images/delete.gif\" alt=\"delete\" /></a>";
+		$html .= "<img src=\"" . Director::BaseURL() . "/display_anything/images/sort.png\" title=\"drag and drop to sort\" alt=\"drag and drop to sort\" />";
 		$html .= "</div>";
 		$html .= "</div>";
 		
