@@ -1,8 +1,9 @@
 # DisplayAnything #
 
-A file upload and gallery tool for Silverstripe 2.4+. It's a simple replacement for the ImageGallery module and it's designed to get you up and running with minimum or no configuration and esoteric error messages.
+DisplayAnything is both a file and image gallery module for the SilverStripe CMS. By default, it's shipped as an image gallery module.
+It can replace the standard ImageGallery module, migrate images from it and it's designed to get you up and running with minimum or no configuration and esoteric error messages.
 
-DisplayAnything implements Ajax Upload (http://valums.com/ajax-upload/), a third party file upload handler.
+DisplayAnything implements the client-side features provided by File Uploader (https://github.com/valums/file-uploader), a third party Javascript library.
 
 The base level class is called UploadAnything which provides the upload functionality.
 
@@ -10,31 +11,28 @@ The base level class is called UploadAnything which provides the upload function
 + Handles file uploads via XHR or standard uploads.
 + Security: uses a configurable mimetype map, not file extensions, to determine an uploaded file type
 + Integration: uses PHP system settings for upload file size
-+ Multiple file uploading in supported browsers (Note: not yet supported by Internet Explorer)
++ Multiple file uploading in supported browsers (Note: Internet Explorer < 9 does not support multiple file uploads)
 + Drag and Drop in supported browsers (Chrome, Firefox, Safari and possibly Opera)
 + XHR file uploading
 + Has Zero Dependencies on the third-party Silverstripe modules ImageGallery, DataObjectManager and Uploadify
 + 100% Flash Free - no plugin crashes, HTTP errors, I/O errors or other futzing with incomprehensible Flash errors!
-+ Import ImageGallery album items to a gallery
-+ Uses jQuery bundled with Silverstripe
++ Import ImageGallery album items to a gallery!
++ Uses jQuery bundled with SilverStripe
 + Well documented & clean code with extendable classes and overrideable methods
 + $_REQUEST not used
-+ Uses Valum's Ajax Uploader (hat tip)
++ Uses Valum's File Uploader (hat tip)
 + Drag and drop sorting of images & files in the gallery
 + File upload progress with cancel option
 
 ## State ##
 + Currently considered beta although we're eating our own dogfood and are happy with general stability - i.e test in a development setting, be aware it's in Beta and deploy if you are happy with the module.
 
-## Bugs ##
-Probably. Check the <a href="https://github.com/codem/DisplayAnything/issues">Issues list</a> and add feature requests and issues there.
-
 ## TODO ##
 + Client side reminder of file size (per Valums file uploader spec)
 + Testing of uploads in IE8+
 
 ## Why? ##
-DisplayAnything was developed after implementing the ImageGallery module on a large, complex SilverStripe site which resulted in valuable time spent debugging DataObjectManager code and head-scratching Uploadify errors. Codem developed DisplayAnything to be a functional CMS replacement for the ImageGallery module.
+DisplayAnything was developed after implementing the ImageGallery module on a large, complex SilverStripe site which resulted in valuable time spent debugging DataObjectManager code and head-scratching Uploadify errors. Codem developed DisplayAnything to be a functional CMS replacement for the SilverStripe ImageGallery module.
 
 ## MimeTypes ##
 DisplayAnything comes preconfigured to accept image uploads (GIF, PNG, JPG). When used as a gallery, a usage tab is made available where you can add and edit the current gallery usage.
@@ -49,8 +47,9 @@ DisplayAnything comes preconfigured to accept image uploads (GIF, PNG, JPG). Whe
 		<dt>Bzr (requires bzr-git) - note the / in the path</dt>
 		<dd><code>bzr branch git://git@github.com/codem/DisplayAnything.git display_anything</code></dd>
 		<dt>Download</dt>
-		<dd><code>wget https://github.com/codem/DisplayAnything/zipball/master</code></dd>
+		<dd><code>wget --output-document=display_anything.zip https://github.com/codem/DisplayAnything/zipball/master</code></dd>
 	</dl>
+	<br />In all cases the module source code should be located in a directory called 'display_anything'
 </li>
 <li>run /dev/build (admin privileges required) and possibly a ?flush=1</li>
 <li>implement in the CMS (see 'CMS' below)</li>
@@ -112,7 +111,8 @@ class MyPage extends Page {
 }
 ```
 ## Frontend Templates ##
-+ Inumerable gallery plugins with varying licenses exist for image & file lists and viewing of images in a lightbox (Fancybox is good and open source). DisplayAnything stays light and does not bundle any of these galleries. It's up to you to implement the gallery the way you want it (this saves you having to undo & override any defaults DisplayAnything may set).
+Innumerable gallery plugins with varying licenses exist for image & file lists and viewing of images in a lightbox (Fancybox is good and open source).
+DisplayAnything avoids being a kitchen sink, stays light and does not bundle any of these plugins. It's up to you to implement the gallery the way you want it (this saves you having to undo & override any defaults DisplayAnything may set).
 Here's an example Page control you may like to use as a starting point:
 
 ```php
@@ -139,8 +139,12 @@ Here's an example Page control you may like to use as a starting point:
 
 ## Support ##
 + Twitter : <a href="http://twitter.com/_codem">@_codem</a>
-+ Github <a href="https://github.com/codem/DisplayAnything/issues">Issues list please for bug reports</a>
++ Github <a href="https://github.com/codem/DisplayAnything/issues">Issues list please for bug reports & feature requests</a>
 + Need extra help? <a href="http://codem.com.au">Codem can provide commercial support for this and other Silverstripe projects</a>
+
+## Common Problems ##
++ Javascript not running - ensure the source code is located in a directory called 'display_anything'
++ Internet Explorer bugs - probably, although it should work in IE9. We don't support 7 or lower and intensive testing in 8+ has not been completed. You are welcome to try it out in IE8+ and report issues.
 
 ## Licenses ##
 DisplayAnything is licensed under the Modified BSD License (refer license.txt)
