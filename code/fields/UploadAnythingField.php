@@ -197,11 +197,11 @@ class UploadAnythingField extends ComplexTableField {
 		$postSizeMb = round($postSize / 1024 / 1024, 2) . 'Mb';
 		$uploadSizeMb = round($uploadSize / 1024 / 1024, 2) . 'Mb';
 		
-		if ($size > $postSize/2) {
+		if ($size > $postSize) {
 			throw new Exception("The server does not allow files of this size ({$msize}) to be uploaded. Hint: post_max_size is set to {$postSizeMb}");
 		}
 		
-		if ($size > $uploadSize/2) {
+		if ($size > $uploadSize) {
 			throw new Exception("The server does not allow files of this size ({$msize}) to be uploaded. Hint: upload_max_filesize is set to {$uploadSizeMb}");
 		}
 		
