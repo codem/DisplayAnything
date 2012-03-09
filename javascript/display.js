@@ -79,7 +79,7 @@ UploadAnything.prototype = {
 						function(k,v) {
 							items[k] = {
 								id : jQuery(this).attr('rel'),
-								pos : k,	
+								pos : k	
 							}
 						}
 					);
