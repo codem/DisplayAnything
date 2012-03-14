@@ -263,3 +263,7 @@ table.uploadanythingfile_meta td {
 	border : 1px solid #ccc;
 	padding : 6px 9px;
 }
+
+.display_anything_usage select {
+	width : 280px;
+}
