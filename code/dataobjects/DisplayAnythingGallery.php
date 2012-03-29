@@ -14,7 +14,8 @@ class DisplayAnythingGalleryUsage extends DataObject {
 	);
 	
 	public function TitleMap() {
-		return $this->Title . " (" . $this->MimeTypes . ")";
+		$types = explode(",", $this->MimeTypes);
+		return $this->Title . " (" . implode(",", array_unique($types)) . ")";
 	}
 	
 	protected function defaultUsageRecords() {
