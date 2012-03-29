@@ -13,7 +13,9 @@ UploadAnything.prototype = {
 		var _self = this;
 		upload_config.element = jQuery('#' + id)[0];
 		upload_config.debug = this.debug;
-		upload_config.maxConnections = 3;//@todo configurable
+		if(typeof upload_config.maxConnections == 'undefined') {
+			upload_config.maxConnections = 3;
+		}
 		upload_config.onSubmit = function(id, fileName) {
 			jQuery(this.element).find('.qq-upload-list').show();
 			_self.uploads++;
@@ -22,6 +24,16 @@ UploadAnything.prototype = {
 			_self.uploads--;
 			_self.check_completion(this);
 		};
+		
+		if(typeof upload_config.allowedExtensions == 'object') {
+			var ext = upload_config.allowedExtensions;
+			upload_config.allowedExtensions = [];
+			var e;
+			for(e in ext) {
+				upload_config.allowedExtensions.push(ext[e]);
+			}
+		}
+		
 		this.uploader = new qq.FileUploader(upload_config);
 	},
 	check_completion : function(FileUploader) {
@@ -79,7 +91,7 @@ UploadAnything.prototype = {
 						function(k,v) {
 							items[k] = {
 								id : jQuery(this).attr('rel'),
-								pos : k	
+								pos : k,	
 							}
 						}
 					);
