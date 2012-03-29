@@ -7,6 +7,8 @@
 class UploadAnythingFile extends File {
 
 	private $meta;
+	
+	protected static $configuration = FALSE;//for general config
 
 	static $db = array(
 		'Visible' => 'Boolean',
@@ -21,6 +23,10 @@ class UploadAnythingFile extends File {
 	static $has_one = array(
 		'InternalLink' => 'Page',
 	);
+	
+	static public function Configure($data) {
+		self::$configuration = $data;
+	}
 	
 	public function LinkToURL() {
 		if(!empty($this->ExternalURL)) {
@@ -117,22 +123,95 @@ class UploadAnythingFile extends File {
 		return $this->meta;
 	}
 	
-	public function Thumbnail($method,$width) {
-		return $this->SetWidth($width);
+	
+	// -- IMAGE THUMBING if this file is an image
+	
+	/**
+	 * CreateImage()
+	 * @note based on config we'll return a watermarked image or a normal image
+	 * @param $data array
+	 */
+	public function CreateImage($data) {
+		if(!empty(self::$configuration['watermark'])) {
+			return new WatermarkedImage($data);
+		} else {
+			return new Image($data);
+		}
+	}
+	
+	/**
+	 * Link()
+	 * @note provides a link to this file, or the watermarked version if required
+	 */
+	public function Link() {
+		if(!empty(self::$configuration['watermark'])) {
+			$wm = new WatermarkedImage($this->getAllFields());
+			$copy = $wm->SetSize($wm->getWidth(), $wm->getHeight());
+			if($copy) {
+				unset($wm);
+				return $copy->Link();
+			}
+		}
+		return parent::Link();
+	}
+	
+	/**
+	 * Thumbnail()
+	 * @note helper method to thumb an image to a certain width or height
+	 * @param $width_height string WIDTHxHEIGHT
+	 * @param $method one of the image thumbing methods supported
+	 */
+	public function Thumbnail($method, $width_height, $height = "") {
+	
+		if($height != "" && is_int($width_height)) {
+			//called from script
+			$width = $width_height;
+		} else if(!is_int($width_height) && strpos( $width_height, "x") !== FALSE) {
+			//called from template
+			$parts = explode("x", $width_height);
+			$width = $height = 0;
+			if(!empty($parts)) {
+				$width = $parts[0];
+				if(count($parts) == 2) {
+					$height = $parts[1];
+				}
+			}
+		}
+		
+		switch($method) {
+			case "PaddedImage":
+			case "CroppedImage":
+				if($width > 0 && $height > 0) {
+					return $this->$method($width, $height);
+				}
+				break;
+			case "SetWidth":
+				if($width > 0) {
+					return $this->SetWidth($width);
+				}
+				break;
+			case "SetHeight":
+				if($height > 0) {
+					return $this->SetHeight($height);
+				}
+				break;
+			default:
+				return "";
+				break;
+		}
+		return "";
 	}
 	
 	public function PaddedImage($width, $height) {
 		$is_image = $this->IsImage();
 		if($is_image) {
-			$image = new Image(
-				array(
-					'ID' => $this->ID,
-					'Filename' => $this->Filename,
-					'Name' => $this->Name,
-					'ClassName' => 'Image',
-					'Title' => $this->Title,
-				)
-			);
+			$image = $this->CreateImage(array(
+				'ID' => $this->ID,
+				'Filename' => $this->Filename,
+				'Name' => $this->Name,
+				'ClassName' => 'Image',
+				'Title' => $this->Title,
+			));
 			$resize = $image->PaddedImage($width, $height);
 			return $resize->getTag();
 		}
@@ -146,16 +225,34 @@ class UploadAnythingFile extends File {
 			if($meta['width'] < $width) {
 				$width = $meta['width'];
 			}
-			$image = new Image(
-				array(
-					'ID' => $this->ID,
-					'Filename' => $this->Filename,
-					'Name' => $this->Name,
-					'ClassName' => 'Image',
-					'Title' => $this->Title,
-				)
-			);
+			$image = $this->CreateImage(array(
+				'ID' => $this->ID,
+				'Filename' => $this->Filename,
+				'Name' => $this->Name,
+				'ClassName' => 'Image',
+				'Title' => $this->Title,
+			));
 			$resize = $image->SetWidth($width);
+			return $resize->getTag();
+		}
+		return FALSE;
+	}
+	
+	public function SetHeight($height) {
+		$is_image = $this->IsImage();
+		if($is_image) {
+			$meta = $this->GetMeta();
+			if($meta['height'] < $height) {
+				$height = $meta['height'];
+			}
+			$image = $this->CreateImage(array(
+				'ID' => $this->ID,
+				'Filename' => $this->Filename,
+				'Name' => $this->Name,
+				'ClassName' => 'Image',
+				'Title' => $this->Title,
+			));
+			$resize = $image->SetHeight($height);
 			return $resize->getTag();
 		}
 		return FALSE;
@@ -164,20 +261,20 @@ class UploadAnythingFile extends File {
 	public function CroppedImage($width, $height) {
 		$is_image = $this->IsImage();
 		if($is_image) {
-			$image = new Image(
-				array(
-					'ID' => $this->ID,
-					'Filename' => $this->Filename,
-					'Name' => $this->Name,
-					'ClassName' => 'Image',
-					'Title' => $this->Title,
-				)
-			);
+			$image = $this->CreateImage(array(
+				'ID' => $this->ID,
+				'Filename' => $this->Filename,
+				'Name' => $this->Name,
+				'ClassName' => 'Image',
+				'Title' => $this->Title,
+			));
 			$resize = $image->CroppedImage($width, $height);
 			return $resize->getTag();
 		}
 		return FALSE;
 	}
+	
+	// -- END IMAGE THUMBING
 	
 	public function OriginalURL() {
 		return  $this->getURL();
@@ -367,6 +464,11 @@ HTML
 		return TRUE;
 	}
 	
+	
+	/**
+	 * getRequirementsForPopup()
+	 * @note provides CSS and JS requirements to the lightbox popup
+	 */
 	public function getRequirementsForPopup() {
 		UploadAnythingField::LoadScript();
 		UploadAnythingField::LoadAdminCSS();
