@@ -47,6 +47,11 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 		return $list;
 	}
 	
+	protected function GetAllowedFilesNote() {
+		$usage = $this->controller->{$this->name}()->Usage();
+		return $usage->TitleMap();
+	}
+	
 	/**
 	 * ImageGalleryAlbum()
 	 * @note gets an ImageGalleryAlbum record
