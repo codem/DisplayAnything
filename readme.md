@@ -11,6 +11,7 @@ The base level class is called UploadAnything which provides the upload function
 + Allows for watermarking of images (see Watermarking below)
 + Better file name handling
 + Various performance enhancements and UI updates
++ Some IE9 improvements to the UI (IE9 handling not feature complete - fork me to help out!)
 
 ## Features ##
 + Handles file uploads via XHR or standard uploads.
