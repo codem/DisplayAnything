@@ -128,11 +128,11 @@ class UploadAnythingFile extends File {
 	
 	/**
 	 * CreateImage()
-	 * @note based on config we'll return a watermarked image or a normal image
-	 * @param $data array
+	 * @param $watermark TRUE to return a watermarked image
+	 * @param $data array of seed data for the image
 	 */
-	public function CreateImage($data) {
-		if(!empty(self::$configuration['watermark'])) {
+	public function CreateImage($data, $watermark = FALSE) {
+		if($watermark) {
 			return new WatermarkedImage($data);
 		} else {
 			return new Image($data);
@@ -202,7 +202,7 @@ class UploadAnythingFile extends File {
 		return "";
 	}
 	
-	public function PaddedImage($width, $height) {
+	public function PaddedImage($width, $height, $watermark = FALSE) {
 		$is_image = $this->IsImage();
 		if($is_image) {
 			$image = $this->CreateImage(array(
@@ -211,14 +211,14 @@ class UploadAnythingFile extends File {
 				'Name' => $this->Name,
 				'ClassName' => 'Image',
 				'Title' => $this->Title,
-			));
+			), $watermark);
 			$resize = $image->PaddedImage($width, $height);
 			return $resize->getTag();
 		}
 		return FALSE;
 	}
 	
-	public function SetWidth($width) {
+	public function SetWidth($width, $watermark = FALSE) {
 		$is_image = $this->IsImage();
 		if($is_image) {
 			$meta = $this->GetMeta();
@@ -231,14 +231,14 @@ class UploadAnythingFile extends File {
 				'Name' => $this->Name,
 				'ClassName' => 'Image',
 				'Title' => $this->Title,
-			));
+			), $watermark);
 			$resize = $image->SetWidth($width);
 			return $resize->getTag();
 		}
 		return FALSE;
 	}
 	
-	public function SetHeight($height) {
+	public function SetHeight($height, $watermark = FALSE) {
 		$is_image = $this->IsImage();
 		if($is_image) {
 			$meta = $this->GetMeta();
@@ -251,14 +251,14 @@ class UploadAnythingFile extends File {
 				'Name' => $this->Name,
 				'ClassName' => 'Image',
 				'Title' => $this->Title,
-			));
+			), $watermark);
 			$resize = $image->SetHeight($height);
 			return $resize->getTag();
 		}
 		return FALSE;
 	}
 	
-	public function CroppedImage($width, $height) {
+	public function CroppedImage($width, $height, $watermark = FALSE) {
 		$is_image = $this->IsImage();
 		if($is_image) {
 			$image = $this->CreateImage(array(
@@ -267,11 +267,24 @@ class UploadAnythingFile extends File {
 				'Name' => $this->Name,
 				'ClassName' => 'Image',
 				'Title' => $this->Title,
-			));
+			), $watermark);
 			$resize = $image->CroppedImage($width, $height);
 			return $resize->getTag();
 		}
 		return FALSE;
+	}
+	
+	public function WatermarkCroppedImage($width, $height) {
+		return $this->CroppedImage($width, $height, TRUE);
+	}
+	public function WatermarkPaddedImage($width, $height) {
+		return $this->PaddedImage($width, $height, TRUE);
+	}
+	public function WatermarkSetHeight($height) {
+		return $this->SetHeight($height, TRUE);
+	}
+	public function WatermarkSetWidth($width) {
+		return $this->SetWidth($width, TRUE);
 	}
 	
 	// -- END IMAGE THUMBING

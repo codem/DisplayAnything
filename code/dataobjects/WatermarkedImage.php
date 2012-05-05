@@ -1,10 +1,17 @@
 <?php
 class WatermarkedImage extends Image {
 
-	public static $opacity = 15;
+	public static $opacity = 50;//default opacity
 	public static $position = "tr";
 	public static $padding_x = 5;
 	public static $padding_y = 5;
+	
+	private $watermark_image_path;
+	private $can_watermark = TRUE;//on by default. SiteLocale can turn this off
+	
+	private function watermark_config() {
+		$this->get_watermark_image();
+	}
 	
 	/**
 	 * Generate an image on the specified format. It will save the image
@@ -28,19 +35,20 @@ class WatermarkedImage extends Image {
 		
 		$gd = new GD($path);
 		
-		if($gd->hasGD()){
+		if($gd->hasGD()) {
 			$generateFunc = "generate$format";
 			if($this->hasMethod($generateFunc)) {
-				$gd = $this->$generateFunc($gd, $arg1, $arg2);
-				if($gd) {
+				if($gd = $this->$generateFunc($gd, $arg1, $arg2)) {
 					try {
-						$this->watermark(&$gd);
+						$this->watermark_config();
+						if($this->can_watermark) {
+							$this->watermark(&$gd);
+						}
 						$gd->writeTo(Director::baseFolder()."/" . $cacheFile);
 					} catch (Exception $e) {
 						USER_ERROR("WatermarkedImage::generateFormattedImage - watermarking failed: {$e->getMessage()}.",E_USER_WARNING);
 					}
 				}
-	
 			} else {
 				USER_ERROR("WatermarkedImage::generateFormattedImage - Image $format function not found.",E_USER_WARNING);
 			}
@@ -48,50 +56,54 @@ class WatermarkedImage extends Image {
 	}
 	
 	public function get_watermark_image() {
-		$path = FALSE;
+		$this->watermark_image_path = FALSE;
 		//try to get it from sitelocale
 		if(class_exists('SiteLocale')) {
 			$settings = SiteLocale::GetCurrentDomainRecord();
 			$image = $settings->WatermarkImage();
+			$this->can_watermark = ($settings->WatermarkEnabled == 1);//has site locale turned it off ?
+			self::$opacity = $settings->WatermarkTransparency;
 			if(!empty($image->ID)) {
-				$path = $image->getFullPath();
+				$this->watermark_image_path = $image->getFullPath();
 			}
 		}
 		
-		if(!$path || !is_readable($path)) {
+		if(!$this->watermark_image_path || !is_readable($this->watermark_image_path)) {
 			//try to get it form the theme
 			$theme = SSViewer::current_theme();
 			if($theme) {
-				$path = Director::baseFolder() . '/' . $theme . '/images/_wm.png';
+				$this->watermark_image_path = Director::baseFolder() . '/' . $theme . '/images/_wm.png';
 			}
 		}
 		
-		if(!$path || !is_readable($path)) {
+		if(!$this->watermark_image_path || !is_readable($this->watermark_image_path)) {
 			//get it from this directory
-			$path = Director::baseFolder() . '/display_anything/images/_wm.png';
+			$this->watermark_image_path = Director::baseFolder() . '/display_anything/images/_wm.png';
 		}
 		
+		//test opacity is sane
+		if(self::$opacity < 0 || self::$opacity > 100) {
+			self::$opacity = 50;//fallback if nothing sensible is set
+		}
 		
-		return $path;
+		return $this->watermark_image_path;
 		
 	}
 	
 	public function watermark($gd) {
 		
-		$path = $this->get_watermark_image();
-		
-		if(is_readable($path)) {
-			$meta = getimagesize($path);
+		if(is_readable($this->watermark_image_path)) {
+			$meta = getimagesize($this->watermark_image_path);
 		} else {
-			throw new Exception("Watermark file {$path} is not readable");
+			throw new Exception("Watermark file {$this->watermark_image_path} is not readable");
 		}
 		
 		if(empty($meta[2]) || $meta[2] != IMAGETYPE_PNG) {
-			throw new Exception("Watermark file {$path} is not a valid PNG file");
+			throw new Exception("Watermark file {$this->watermark_image_path} is not a valid PNG file");
 		}
 		
 		//get watermark image source
-		$watermark = imagecreatefrompng($path);
+		$watermark = imagecreatefrompng($this->watermark_image_path);
 		$watermark_width = $meta[0];
 		$watermark_height = $meta[1];
 		
