@@ -158,15 +158,14 @@ class UploadAnythingFile extends File {
 	/**
 	 * Thumbnail()
 	 * @note helper method to thumb an image to a certain width or height
-	 * @param $width_height string WIDTHxHEIGHT
+	 * @param $width_height string WIDTHxHEIGHT e.g 400x300 or a WIDTH e.g 400 -- In templates only two arguments are allowed by SS if you call $Thumbnail
 	 * @param $method one of the image thumbing methods supported
 	 */
-	public function Thumbnail($method, $width_height, $height = "") {
-	
-		if($height != "" && is_int($width_height)) {
+	public function Thumbnail($method, $width_height, $height = 0) {
+		if(is_numeric($width_height)) {
 			//called from script
 			$width = $width_height;
-		} else if(!is_int($width_height) && strpos( $width_height, "x") !== FALSE) {
+		} else if(strpos( $width_height, "x") !== FALSE) {
 			//called from template
 			$parts = explode("x", $width_height);
 			$width = $height = 0;
@@ -354,17 +353,10 @@ class UploadAnythingFile extends File {
 		$fields->addFieldsToTab(
 			'Root.FileInformation',
 			array(
+				new LiteralField('FilePathField', "<p class=\"message\">Editing {$this->Name} - {$this->Filename}</p>"),
 				new TextField('Title', 'Title of File', $this->Title),
-				new TextField('CallToActionText', 'Call To Action Text (placed on button or link selected)', $this->CallToActionText),
-				new TreeDropdownField(
-						"InternalLinkID",
-						"Internal page link",
-						"SiteTree"
-				),
-				new TextField('ExternalURL', 'External link (e.g http://example.com/landing/page) - will override Internal Page Link', $this->ExternalURL),
 				new TextField('Caption', 'File Caption', $this->Caption),
 				new TextareaField('Description', 'File Description', 5, NULL, $this->Description),
-				new ImageField('AlternateImage', 'Alternate Image (optional)'),
 			)
 		);
 		
@@ -409,9 +401,29 @@ HTML
 		);
 		
 		$fields->addFieldsToTab(
+			'Root.Linking',
+			array(
+				new TreeDropdownField(
+						"InternalLinkID",
+						"Internal page link",
+						"SiteTree"
+				),
+				new TextField('ExternalURL', 'External link (e.g http://example.com/landing/page) - will override Internal Page Link', $this->ExternalURL),
+				new TextField('CallToActionText', 'Call To Action Text (placed on button or link selected)', $this->CallToActionText),
+			)
+		);
+		
+		$fields->addFieldsToTab(
+			'Root.TemplateOptions',
+			array(
+				new ImageField('AlternateImage', 'Alternate Image (optional)'),
+			)
+		);
+		
+		$fields->addFieldsToTab(
 			'Root.Ownership',
 			array(
-				new DropDownField('OwnerID','File Owner', DataObject::get('Member')->map('ID','Name'), $this->OwnerID)
+				new DropDownField('OwnerID','Who owns this file?', DataObject::get('Member')->map('ID','Name'), $this->OwnerID)
 			)
 		);
 		
