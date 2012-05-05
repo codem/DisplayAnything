@@ -7,7 +7,7 @@
 
 .file-uploader {
 	background-color : #E9E9E9;
-	padding : 6px;
+	padding : 1px;
 }
 
 .file-uploader ul li {
@@ -26,6 +26,13 @@ form #dummy_field {
 	display : none;
 }
 
+form .file-uploader .field label.left,
+form .file-uploader .field label strong,
+form .file-uploader .field label a,
+form .file-uploader .field label span {
+	font-size : 12px;
+}
+
 form .file-uploader .field .middleColumn .help {
 	background-color : #e9e9e9;
 	color : #666;
@@ -41,6 +48,10 @@ form .file-uploader .field .middleColumn .help .inner {
 form .file-uploader .field .middleColumn .help li,
 form .file-uploader .field .middleColumn .help li strong {
 	font-size : 12px;
+}
+
+form .file-uploader .help h4 {
+	margin : 0;
 }
 
 .file-uploader .sortlink {
@@ -76,7 +87,7 @@ form .file-uploader .field .middleColumn .help li strong {
 }
 
 .file-uploader .help ul {
-	margin : 2px 2px 20px 20px;
+	margin : 2px 2px 2px 20px;
 	font-size : 1.3em;
 }
 
@@ -166,6 +177,10 @@ form .file-uploader .field .middleColumn .help li strong {
 	-moz-box-shadow: 2px 2px 5px rgba(123,123,123,0.3);
 	-webkit-box-shadow: 2px 2px 5px rgba(123,123,123,0.3);
 	box-shadow: 2px 2px 5px rgba(123,123,123,0.3);
+}
+
+.file-uploader-list .file-uploader-item a.editlink {
+	display : block;
 }
 
 .file-uploader-list .file-uploader-item .thumb {
@@ -262,4 +277,8 @@ table.uploadanythingfile_meta th,
 table.uploadanythingfile_meta td {
 	border : 1px solid #ccc;
 	padding : 6px 9px;
+}
+
+.display_anything_usage select {
+	width : 280px;
 }
