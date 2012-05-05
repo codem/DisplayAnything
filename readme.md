@@ -7,8 +7,14 @@ DisplayAnything implements the client-side features provided by File Uploader (h
 
 The base level class is called UploadAnything which provides the upload functionality.
 
+## New Features ##
++ Allows for watermarking of images (see Watermarking below)
++ Better file name handling
++ Various performance enhancements and UI updates
+
 ## Features ##
 + Handles file uploads via XHR or standard uploads.
++ Import ImageGallery album items to a DisplayAnything gallery!
 + Security: uses a configurable mimetype map, not file extensions, to determine an uploaded file type
 + Integration: uses PHP system settings for upload file size
 + Multiple file uploading in supported browsers (Note: Internet Explorer < 9 does not support multiple file uploads)
@@ -16,7 +22,6 @@ The base level class is called UploadAnything which provides the upload function
 + XHR file uploading
 + Has Zero Dependencies on the third-party Silverstripe modules ImageGallery, DataObjectManager and Uploadify
 + 100% Flash Free - no plugin crashes, HTTP errors, I/O errors or other futzing with incomprehensible Flash errors!
-+ Import ImageGallery album items to a gallery!
 + Uses jQuery bundled with SilverStripe
 + Well documented & clean code with extendable classes and overrideable methods
 + $_REQUEST not used
@@ -32,7 +37,9 @@ The base level class is called UploadAnything which provides the upload function
 + Testing of uploads in IE8+
 
 ## Why? ##
-DisplayAnything was developed after implementing the ImageGallery module on a large, complex SilverStripe site which resulted in valuable time spent debugging DataObjectManager code and head-scratching Uploadify errors. Codem developed DisplayAnything to be a functional CMS replacement for the SilverStripe ImageGallery module.
+DisplayAnything was developed after implementing the ImageGallery module on a large, complex SilverStripe site which resulted in valuable time spent debugging DataObjectManager code and head-scratching Uploadify errors.
+
+Codem developed DisplayAnything to be a functional CMS replacement for the SilverStripe ImageGallery module.
 
 ## MimeTypes ##
 DisplayAnything comes preconfigured to accept image uploads (GIF, PNG, JPG). When used as a gallery, a usage tab is made available where you can add and edit the current gallery usage.
@@ -136,6 +143,33 @@ Here's an example Page control you may like to use as a starting point:
 	<% end_control %>
 <% end_if  %>
 ```
+### Ordered Gallery Items ###
+You can implement ordered galleries in your frontend template to match yours or someone else's drag and drop admin work on the Gallery. Simply change "GalleryItems" to "OrderedGalleryItems" in the template example above.
+
+## Watermarking ##
+To implement watermarking, use the following image template/html:
+```php
+<li class="$EvenOdd $FirstLast"><a href="$URL" rel="page-gallery">$WatermarkCroppedImage(90,90)</a></li>
+```
+You can use any Silverstripe image resizing method supported (SetHeight, SetWidth, CroppedImage, PaddedImage, SetSize) but prefixed with "Watermark".
+
+The module ships with a watermark image called "_wm.png". To implement your own, add an image called "_wm.png" to a directory named the same as your theme. For example, if your theme is "green", add a file of that name to document_root/green/images/.
+
+Watermarking is only enabled if you use the Watermark prefixed template controls.
+
+## Watermark configuration options ###
+Use the following in your site config:
++ WatermarkedImage::$opacity (0-100)
++ WatermarkedImage::$position (tr, tl, br, bl). Example br anchors the watermark image to the bottom right of the source image.
++ WatermarkedImage::$padding_x (pixel padding from image edge in the x-axis)
++ WatermarkedImage::$padding_y (pixel padding from image edge in the y-axis)
+
+## Watermark notes ###
++ Uses GD
++ 8 bit PNGs only
++ The watermark source image is not resized
++ The original image is not watermarked
++ WatermarkedImageDecorator decorates Image
 
 ## Support ##
 + Twitter : <a href="http://twitter.com/_codem">@_codem</a>
