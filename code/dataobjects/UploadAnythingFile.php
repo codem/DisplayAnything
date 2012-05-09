@@ -357,7 +357,6 @@ class UploadAnythingFile extends File {
 				new TextField('Title', 'Title of File', $this->Title),
 				new TextField('Caption', 'File Caption', $this->Caption),
 				new TextareaField('Description', 'File Description', 5, NULL, $this->Description),
-				new ImageField('AlternateImage', 'Alternate Image (optional)'),
 			)
 		);
 		
