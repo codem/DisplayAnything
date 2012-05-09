@@ -15,7 +15,7 @@ class SingleImagePage extends Page {
 		//NOTE: that single field uploads can be done with the core Silverstripe FileField (and is probably more stable at this point)
 		if(!empty($this->ID)) {
 			$uploader = new UploadAnythingField($this, 'SingleFile','File');
-			$uploader->SetMimeTypes(array('text/plain'));//this single file uploader only allows plain text uploads
+			$uploader->SetMimeTypes(array('text/plain' => 'txt'));//this single file uploader only allows plain text uploads
 		} else {
 			$uploader = new LiteralField("PageNotSavedYet", "<p>The file may be uploaded after saving this page.</p>");
 		}
