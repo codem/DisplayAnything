@@ -65,85 +65,21 @@ DisplayAnything comes preconfigured to accept image uploads (GIF, PNG, JPG). Whe
 </ol>
 
 ## Migrating items from the ImageGallery gallery module ##
-If DisplayAnything detects an  ImageGallery Album associated with the current page it will provide an Image Gallery Migration tab containing migration options. Migrated mages are copied rather than moved.
+If DisplayAnything detects an  ImageGallery Album associated with the current page it will provide an Image Gallery Migration tab containing migration options. Migrated images are copied rather than moved.
 You can choose a albums from the list of album(s) provided and save the page, successfully imported items will appear in the file list. You can retry the migration at any time.
 
 Once migration is complete you can remove the Image Gallery module as and when you wish.
 
-## CMS ##
-You can implement a DisplayAnything gallery using the normal getCmsFields() syntax on a Page type:
+## CMS implementation ##
+View the <a href="./examples">example directory</a> for some sample page, dataobject and template implementations.
 
-```php
-class MyPage extends Page {
-	
-	public static $has_one = array(
-		'SomeFile' => 'UploadAnythingFile',
-		'SomeGallery' => 'DisplayAnythingGallery',
-		'SomeVideoGallery' => 'DisplayAnythingYouTubeGallery',
-	);
-	
-	public function getCmsFields() {
-		$fields = parent::getCmsFields();
-		
-		//GALLERY per page
-		$gallery = new DisplayAnythingGalleryField(
-			$this,
-			'SomeGallery',
-			'DisplayAnythingGallery'
-		);
-		$gallery->SetTargetLocation('/some/path/to/a/gallery');//relative to ASSETS_PATH
-		$fields->addFieldsToTab('Root.Content.Gallery', array($gallery));
-		
-		
-		//SINGLE field - with a test to see if the page has been saved
-		//NOTE: that single field uploads can be done with the core Silverstripe FileField (and is probably more stable at this point)
-		if(!empty($this->ID)) {
-			$uploader = new UploadAnythingField($this, 'SomeFile','File');
-			$uploader->SetMimeTypes(array('text/plain'));//this single file uploader only allows plain text uploads
-		} else {
-			$uploader = new LiteralField("PageNotSavedYet", "<p>The file may be uploaded after saving this page.</p>");
-		}
-		$fields->addFieldsToTab('Root.Content.Image', array($uploader));
-		
-		//YOUTUBE VIDEO gallery - a simple extension to the default gallery
-		$gallery = new DisplayAnythingGalleryField(
-			$this,
-			'SomeVideoGallery',
-			'DisplayAnythingYouTubeGallery'
-		);
-		$gallery->SetTargetLocation('videogallery');
-		$fields->addFieldToTab('Root.Content.Videos', $gallery);
-		
-		return $fields;
-	}
-}
-```
-## Frontend Templates ##
+## Templates ##
 Innumerable gallery plugins with varying licenses exist for image & file lists and viewing of images in a lightbox (Fancybox is good and open source).
-DisplayAnything avoids being a kitchen sink, stays light and does not bundle any of these plugins. It's up to you to implement the gallery the way you want it (this saves you having to undo & override any defaults DisplayAnything may set).
-Here's an example Page control you may like to use as a starting point:
 
-```php
-<% if SomeImageGallery %>
-	<% control SomeImageGallery %>
-		<div id="ImageGallery">
-			<h4>$Title</h4>
-			<div class="inner">
-				<% if GalleryItems %>
-					<div id="GalleryItems">
-							<ul id="GalleryList">
-								<% control GalleryItems %>
-									<li class="$EvenOdd $FirstLast"><a href="$URL" rel="page-gallery">$CroppedImage(90,90)</a></li>
-								<% end_control %>
-							</ul>
-					</div>
-				<% end_if %>
-				<% include Clearer %>
-			</div>
-		</div>
-	<% end_control %>
-<% end_if  %>
-```
+By design, DisplayAnything avoids being a kitchen sink, stays light and does not bundle any of these plugins. It's up to you to implement the gallery the way you want it (this saves you having to undo & override any defaults DisplayAnything may set).
+
+View the <a href="./examples/templates">example directory</a> for some sample layouts related to the pages in the examples section.
+
 ### Ordered Gallery Items ###
 You can implement ordered galleries in your frontend template to match yours or someone else's drag and drop admin work on the Gallery. Simply change "GalleryItems" to "OrderedGalleryItems" in the template example above.
 
