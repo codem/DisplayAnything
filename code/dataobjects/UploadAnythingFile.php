@@ -7,6 +7,8 @@
 class UploadAnythingFile extends File {
 
 	private $meta;
+	
+	protected static $configuration = FALSE;//for general config
 
 	static $db = array(
 		'Visible' => 'Boolean',
@@ -21,6 +23,10 @@ class UploadAnythingFile extends File {
 	static $has_one = array(
 		'InternalLink' => 'Page',
 	);
+	
+	static public function Configure($data) {
+		self::$configuration = $data;
+	}
 	
 	public function LinkToURL() {
 		if(!empty($this->ExternalURL)) {
@@ -117,67 +123,170 @@ class UploadAnythingFile extends File {
 		return $this->meta;
 	}
 	
-	public function Thumbnail($method,$width) {
-		return $this->SetWidth($width);
+	
+	// -- IMAGE THUMBING if this file is an image
+	
+	/**
+	 * CreateImage()
+	 * @param $watermark TRUE to return a watermarked image
+	 * @param $data array of seed data for the image
+	 */
+	public function CreateImage($data, $watermark = FALSE) {
+		if($watermark) {
+			return new WatermarkedImage($data);
+		} else {
+			return new Image($data);
+		}
 	}
 	
-	public function PaddedImage($width, $height) {
+	/**
+	 * Link()
+	 * @note provides a link to this file, or the watermarked version if required
+	 */
+	public function Link() {
+		if(!empty(self::$configuration['watermark'])) {
+			$wm = new WatermarkedImage($this->getAllFields());
+			$copy = $wm->SetSize($wm->getWidth(), $wm->getHeight());
+			if($copy) {
+				unset($wm);
+				return $copy->Link();
+			}
+		}
+		return parent::Link();
+	}
+	
+	/**
+	 * Thumbnail()
+	 * @note helper method to thumb an image to a certain width or height
+	 * @param $width_height string WIDTHxHEIGHT e.g 400x300 or a WIDTH e.g 400 -- In templates only two arguments are allowed by SS if you call $Thumbnail
+	 * @param $method one of the image thumbing methods supported
+	 */
+	public function Thumbnail($method, $width_height, $height = 0) {
+		if(is_numeric($width_height)) {
+			//called from script
+			$width = $width_height;
+		} else if(strpos( $width_height, "x") !== FALSE) {
+			//called from template
+			$parts = explode("x", $width_height);
+			$width = $height = 0;
+			if(!empty($parts)) {
+				$width = $parts[0];
+				if(count($parts) == 2) {
+					$height = $parts[1];
+				}
+			}
+		}
+		
+		switch($method) {
+			case "PaddedImage":
+			case "CroppedImage":
+				if($width > 0 && $height > 0) {
+					return $this->$method($width, $height);
+				}
+				break;
+			case "SetWidth":
+				if($width > 0) {
+					return $this->SetWidth($width);
+				}
+				break;
+			case "SetHeight":
+				if($height > 0) {
+					return $this->SetHeight($height);
+				}
+				break;
+			default:
+				return "";
+				break;
+		}
+		return "";
+	}
+	
+	public function PaddedImage($width, $height, $watermark = FALSE) {
 		$is_image = $this->IsImage();
 		if($is_image) {
-			$image = new Image(
-				array(
-					'ID' => $this->ID,
-					'Filename' => $this->Filename,
-					'Name' => $this->Name,
-					'ClassName' => 'Image',
-					'Title' => $this->Title,
-				)
-			);
+			$image = $this->CreateImage(array(
+				'ID' => $this->ID,
+				'Filename' => $this->Filename,
+				'Name' => $this->Name,
+				'ClassName' => 'Image',
+				'Title' => $this->Title,
+			), $watermark);
 			$resize = $image->PaddedImage($width, $height);
 			return $resize->getTag();
 		}
 		return FALSE;
 	}
 	
-	public function SetWidth($width) {
+	public function SetWidth($width, $watermark = FALSE) {
 		$is_image = $this->IsImage();
 		if($is_image) {
 			$meta = $this->GetMeta();
 			if($meta['width'] < $width) {
 				$width = $meta['width'];
 			}
-			$image = new Image(
-				array(
-					'ID' => $this->ID,
-					'Filename' => $this->Filename,
-					'Name' => $this->Name,
-					'ClassName' => 'Image',
-					'Title' => $this->Title,
-				)
-			);
+			$image = $this->CreateImage(array(
+				'ID' => $this->ID,
+				'Filename' => $this->Filename,
+				'Name' => $this->Name,
+				'ClassName' => 'Image',
+				'Title' => $this->Title,
+			), $watermark);
 			$resize = $image->SetWidth($width);
 			return $resize->getTag();
 		}
 		return FALSE;
 	}
 	
-	public function CroppedImage($width, $height) {
+	public function SetHeight($height, $watermark = FALSE) {
 		$is_image = $this->IsImage();
 		if($is_image) {
-			$image = new Image(
-				array(
-					'ID' => $this->ID,
-					'Filename' => $this->Filename,
-					'Name' => $this->Name,
-					'ClassName' => 'Image',
-					'Title' => $this->Title,
-				)
-			);
+			$meta = $this->GetMeta();
+			if($meta['height'] < $height) {
+				$height = $meta['height'];
+			}
+			$image = $this->CreateImage(array(
+				'ID' => $this->ID,
+				'Filename' => $this->Filename,
+				'Name' => $this->Name,
+				'ClassName' => 'Image',
+				'Title' => $this->Title,
+			), $watermark);
+			$resize = $image->SetHeight($height);
+			return $resize->getTag();
+		}
+		return FALSE;
+	}
+	
+	public function CroppedImage($width, $height, $watermark = FALSE) {
+		$is_image = $this->IsImage();
+		if($is_image) {
+			$image = $this->CreateImage(array(
+				'ID' => $this->ID,
+				'Filename' => $this->Filename,
+				'Name' => $this->Name,
+				'ClassName' => 'Image',
+				'Title' => $this->Title,
+			), $watermark);
 			$resize = $image->CroppedImage($width, $height);
 			return $resize->getTag();
 		}
 		return FALSE;
 	}
+	
+	public function WatermarkCroppedImage($width, $height) {
+		return $this->CroppedImage($width, $height, TRUE);
+	}
+	public function WatermarkPaddedImage($width, $height) {
+		return $this->PaddedImage($width, $height, TRUE);
+	}
+	public function WatermarkSetHeight($height) {
+		return $this->SetHeight($height, TRUE);
+	}
+	public function WatermarkSetWidth($width) {
+		return $this->SetWidth($width, TRUE);
+	}
+	
+	// -- END IMAGE THUMBING
 	
 	public function OriginalURL() {
 		return  $this->getURL();
@@ -244,14 +353,8 @@ class UploadAnythingFile extends File {
 		$fields->addFieldsToTab(
 			'Root.FileInformation',
 			array(
+				new LiteralField('FilePathField', "<p class=\"message\">Editing {$this->Name} - {$this->Filename}</p>"),
 				new TextField('Title', 'Title of File', $this->Title),
-				new TextField('CallToActionText', 'Call To Action Text (placed on button or link selected)', $this->CallToActionText),
-				new TreeDropdownField(
-						"InternalLinkID",
-						"Internal page link",
-						"SiteTree"
-				),
-				new TextField('ExternalURL', 'External link (e.g http://example.com/landing/page) - will override Internal Page Link', $this->ExternalURL),
 				new TextField('Caption', 'File Caption', $this->Caption),
 				new TextareaField('Description', 'File Description', 5, NULL, $this->Description),
 				new ImageField('AlternateImage', 'Alternate Image (optional)'),
@@ -299,9 +402,29 @@ HTML
 		);
 		
 		$fields->addFieldsToTab(
+			'Root.Linking',
+			array(
+				new TreeDropdownField(
+						"InternalLinkID",
+						"Internal page link",
+						"SiteTree"
+				),
+				new TextField('ExternalURL', 'External link (e.g http://example.com/landing/page) - will override Internal Page Link', $this->ExternalURL),
+				new TextField('CallToActionText', 'Call To Action Text (placed on button or link selected)', $this->CallToActionText),
+			)
+		);
+		
+		$fields->addFieldsToTab(
+			'Root.TemplateOptions',
+			array(
+				new ImageField('AlternateImage', 'Alternate Image (optional)'),
+			)
+		);
+		
+		$fields->addFieldsToTab(
 			'Root.Ownership',
 			array(
-				new DropDownField('OwnerID','File Owner', DataObject::get('Member')->map('ID','Name'), $this->OwnerID)
+				new DropDownField('OwnerID','Who owns this file?', DataObject::get('Member')->map('ID','Name'), $this->OwnerID)
 			)
 		);
 		
@@ -367,6 +490,11 @@ HTML
 		return TRUE;
 	}
 	
+	
+	/**
+	 * getRequirementsForPopup()
+	 * @note provides CSS and JS requirements to the lightbox popup
+	 */
 	public function getRequirementsForPopup() {
 		UploadAnythingField::LoadScript();
 		UploadAnythingField::LoadAdminCSS();

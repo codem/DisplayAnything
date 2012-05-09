@@ -1,3 +1,3 @@
 <?php
-// there is no config
+Object::add_extension('Image', 'WatermarkedImageDecorator');
 ?>

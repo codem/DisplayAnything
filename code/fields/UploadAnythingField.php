@@ -45,7 +45,7 @@ class UploadAnythingField extends ComplexTableField {
 	private $file = FALSE;
 	private $fileKey = 'qqfile';
 	private $returnValue = array();
-	private $allowed_file_types = array();
+	private $allowed_file_types = array();//an associative array, key is the mime type, value is the extension without a .
 	private $tmp_location = array();
 	private $upload_file_name = "";
 	private $overwrite_file = FALSE;
@@ -158,21 +158,44 @@ class UploadAnythingField extends ComplexTableField {
 	}
 	
 	/**
+	 * @note this is a compatibility function with File::setName() - as we aren't dealing with a File object at this point, we can't (and don't want to) all File::setName() as needs a File instance. Additionally, we remove deprecated ereg_replace and generally make cross platform file name demunging smarter.
+	 * @param $name a raw file name without a file extension
+	 * @returns string
+	 */
+	protected function CleanFileName($name) {
+		//trim down the file of any extra leading or trailing crap
+		$name = trim($name, " ._-");
+		// replace one or more white space with a -
+		$name = preg_replace("/\s+/","-", $name);
+		//anything not in this range is removed, this must match File::setName regex
+		$name = preg_replace("/[^A-Za-z0-9.+_\-]/", "", $name);
+		return $name;
+	}
+	
+	/**
 	 * SetUploadFileName()
 	 * @param $uploadPath wherever uploades are saving at
 	 * @param $overwrite if TRUE will overwrite the current same-named file in that directory
+	 * @note we ensure the filename here matches what SS' File object will morph it into
+	 * @todo place a limit on our while loop here? Repeat after me: I don't like recursiveness.
 	 */
 	protected function SetUploadFileName($uploadPath, $overwrite = FALSE) {
 		$pathinfo = pathinfo($this->file->getName());
 		$filename = $pathinfo['filename'];
 		$ext = $pathinfo['extension'];
 		if(!$overwrite && file_exists($uploadPath . "/" . $filename . "." . $ext)) {
+			$suffix = 0;
 			while (file_exists($uploadPath . "/" . $filename . "." . $ext)) {
 				//while the file exists, prepend a suffix to the file name
-				$filename = rand(0, 500) . "_" . $filename;
+				$filename = $suffix . "_" . $filename;
+				$suffix++;
 			}
 		}
-		$this->upload_file_name = str_replace(" ", "_", $filename . "." . $ext);
+		$cleaned = $this->CleanFileName($filename);
+		if($cleaned == "") {
+			throw new Exception("File error: the filename '{$filename}' is not supported");
+		}
+		$this->upload_file_name = $cleaned . "." . $ext;
 		return $uploadPath . "/" . $this->upload_file_name;
 	}
 	
@@ -180,8 +203,17 @@ class UploadAnythingField extends ComplexTableField {
 		return $this->upload_file_name;
 	}
 	
+	protected function GetMaxSize() {
+		//returns whatever is the minimum allowed upload size - out of FILE or POST
+		return min( array( self::GetUploadMaxSize(), self::GetPostMaxSize() ) );
+	}
+	
 	public static function GetUploadMaxSize() {
 		return self::ToBytes(ini_get('upload_max_filesize'));
+	}
+	
+	public static function GetPostMaxSize() {
+		return self::ToBytes(ini_get('post_max_size'));
 	}
 	
 	final private function CheckAllowedSize() {
@@ -191,17 +223,17 @@ class UploadAnythingField extends ComplexTableField {
 			throw new Exception('File is empty');
 		}
 		
-		$postSize = self::ToBytes(ini_get('post_max_size'));
+		$postSize = 
 		$uploadSize = self::GetUploadMaxSize();
 		$msize = round($size / 1024 / 1024, 2) . 'Mb';
 		$postSizeMb = round($postSize / 1024 / 1024, 2) . 'Mb';
 		$uploadSizeMb = round($uploadSize / 1024 / 1024, 2) . 'Mb';
 		
-		if ($size > $postSize/2) {
+		if ($size > $postSize) {
 			throw new Exception("The server does not allow files of this size ({$msize}) to be uploaded. Hint: post_max_size is set to {$postSizeMb}");
 		}
 		
-		if ($size > $uploadSize/2) {
+		if ($size > $uploadSize) {
 			throw new Exception("The server does not allow files of this size ({$msize}) to be uploaded. Hint: upload_max_filesize is set to {$uploadSizeMb}");
 		}
 		
@@ -228,6 +260,22 @@ class UploadAnythingField extends ComplexTableField {
 			throw new Exception("This file uploader does not allow files of type '{$mimeType}' to be uploaded. Allowed types: " .  trim($allowed_list, ", ") . ".");
 		}
 		return TRUE;
+	}
+	
+	/**
+	 * GetAllowedExtensions() used solely for client side validation on the filename
+	 * @returns array
+	 * @throws Exception
+	 */
+	final private function GetAllowedExtensions() {
+		if(empty($this->allowed_file_types)) {
+			throw new Exception("No allowed file types have been defined for this uploader.");
+		}
+		return array_unique(array_values($this->allowed_file_types));
+	}
+	
+	protected function GetAllowedFilesNote() {
+		return implode(",", $this->GetAllowedExtensions());
 	}
 	
 	/**
@@ -270,8 +318,8 @@ class UploadAnythingField extends ComplexTableField {
 	 *					'action' => '/relative/path/to/upload',
 	 *					'params' => array(), //note that params are passed as GET variables (not POST)
 	 *					'allowedExtensions' => array(),//this is ignored and configured on the server side using mimetypes
-	 *					'sizeLimit' => 0, //ignored - server settings used instead
-	 *					'minSizeLimit' => 0, //ignored
+	 *					'sizeLimit' => 0, //in bytes ?
+	 *					'minSizeLimit' => 0, //in bytes ?
 	 *					'debug' => true/false,
 	 *					...
 	 *				)</pre>
@@ -393,23 +441,39 @@ class UploadAnythingField extends ComplexTableField {
 	
 	/**
 	 * GetUploaderConfiguration()
-	 * @note you can override this for custom upload configuration
+	 * @note you can override this for custom upload configuration. This configuration is for the client uploader and it's worth noting that all options here can be easily changed by anyone with enough browser console knowledge. Validation happens on the server
+	 * @todo file extensions allowed
+	 * @todo min size, max size per uploader spec
+	 * @see "### Options of both classes ###" in the FileUploader client readme.md
+	 * @todo check if 'record' is still required...shouldn't be relied on
 	 */
 	public function GetUploaderConfiguration() {
-		$id = $this->id();
-		$js = array();
+		try {
+			//work out the upload location.
+			$this->configuration['action'] = $this->Link('Upload');
+			$this->configuration['reload'] = $this->Link('ReloadList');
+			
+			if(!isset($this->configuration['params'])) {
+				$this->configuration['params'] = array();
+			}
+			
+			$this->configuration['allowedExtensions']  = $this->GetAllowedExtensions();
+	
+			//these options are not supported in all browsers
+			$this->configuration['sizeLimit'] = $this->GetMaxSize();
+			$this->configuration['minSizeLimit'] = 0;
+			
+			if(!isset($this->configuration['maxConnections'])) {
+				$this->configuration['maxConnections'] = 3;
+			}
+			
+			$this->configuration['params']['record'] = $this->GetAssociatedRecord();
+			$string = htmlentities(json_encode($this->configuration), ENT_QUOTES, "UTF-8");
+			//print $string;
+			return $string;
+		} catch (Exception $e) {}
 		
-		//work out the upload location.
-		$this->configuration['action'] = $this->Link('Upload');
-		$this->configuration['reload'] = $this->Link('ReloadList');
-		
-		if(!isset($this->configuration['params'])) {
-			$this->configuration['params'] = array();
-		}
-		$this->configuration['params']['record'] = $this->GetAssociatedRecord();
-		$string = htmlentities(json_encode($this->configuration), ENT_QUOTES, "UTF-8");
-		//print $string;
-		return $string;
+		return "";
 	}
 	
 	/**
@@ -526,8 +590,8 @@ class UploadAnythingField extends ComplexTableField {
 		$html .= "<div class=\"caption\"><p>" . substr($file->Title, 0, 16)  . "</p></div>";
 		$html .= "</a>";
 		$html .= "<div class=\"tools\">";
-		$html .= "<a class=\"deletelink\" href=\"{$deletelink}\"><img src=\"/" . CMS_DIR . "/images/delete.gif\" alt=\"delete\" /></a>";
-		$html .= "<img src=\"/display_anything/images/sort.png\" title=\"drag and drop to sort\" alt=\"drag and drop to sort\" /></a>";
+		$html .= "<a class=\"deletelink\" href=\"{$deletelink}\"><img src=\"" . Director::BaseURL() . CMS_DIR . "/images/delete.gif\" alt=\"delete\" /></a>";
+		$html .= "<img src=\"" . rtrim(Director::BaseURL(), "/") . "/display_anything/images/sort.png\" title=\"drag and drop to sort\" alt=\"drag and drop to sort\" />";
 		$html .= "</div>";
 		$html .= "</div>";
 		
@@ -636,7 +700,10 @@ class UploadAnythingField extends ComplexTableField {
 		$Field = $this->XML_val('Field');
 		
 		// Only of the the following titles should apply
-		$titleBlock = "<label class=\"left\" for=\"{$this->id()}\">Actions: <strong><a href=\"{$reload}\" class=\"reload reload-all\">reload</a></strong><a class=\"sortlink\" href=\"{$resort}\">sort</a></label>";
+		$titleBlock = "<label class=\"left\" for=\"{$this->id()}\">Actions: <strong><a href=\"{$reload}\" class=\"reload reload-all\">reload</a></strong><a class=\"sortlink\" href=\"{$resort}\">sort</a>";
+		$titleBlock .= " <span>Max. file size: " . round($this->GetMaxSize() / 1024 / 1024, 2) . "Mb,";
+		$titleBlock .= " File types: " . $this->GetAllowedFilesNote() . "</span>";
+		$titleBlock .= "</label>";
 		
 		// $MessageType is also used in {@link extraClass()} with a "holder-" prefix
 		$messageBlock = (!empty($Message)) ? "<span class=\"message $MessageType\">$Message</span>" : "";
@@ -707,6 +774,7 @@ HTML;
 	* @note handles a file upload to $uploadPath. Upload() saves the file and links it to the dataobject, returning the saved file ID. If an error occurs an exception is thrown, causing the correct returnValue to be set.
 	* @param $return if TRUE Upload will return a value rather than exit - which is the default for XHR uploads (after printing a JSON string)
 	* @returns mixed
+	* @note $this->file refers to the upload handler instance dealing with a file that has been uploaded, not the SS File object
 	*/
 	final public function Upload($return = FALSE) {
 		try {
@@ -750,6 +818,7 @@ HTML;
 			$this->CheckAllowedType();
 			
 			//now save the file
+			//this this point we aren't dealing with the File object, just an upload
 			$target = $this->SetUploadFileName($uploadPath, $this->overwrite_file);
 			
 			//saves the file to the target directory

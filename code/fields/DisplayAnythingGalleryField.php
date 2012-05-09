@@ -47,6 +47,11 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 		return $list;
 	}
 	
+	protected function GetAllowedFilesNote() {
+		$usage = $this->controller->{$this->name}()->Usage();
+		return $usage->TitleMap();
+	}
+	
 	/**
 	 * ImageGalleryAlbum()
 	 * @note gets an ImageGalleryAlbum record
@@ -79,9 +84,9 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 	public function FieldHolder() {
 	
 		$fields = new Fieldset(array(new TabSet('Root')));
-		$fields->addFieldToTab('Root', new Tab('Files'));
-		$fields->addFieldToTab('Root', new Tab('Details'));
-		$fields->addFieldToTab('Root', new Tab('Usage'));
+		$fields->addFieldToTab('Root', new Tab($this->name .'Files', 'Files'));
+		$fields->addFieldToTab('Root', new Tab($this->name .'Details', 'Details'));
+		$fields->addFieldToTab('Root', new Tab($this->name .'Usage', 'Usage'));
 		
 		$id = $this->controller->{$this->name}()->getField('ID');
 		
@@ -127,7 +132,7 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 		//START OLD
 		
 		$fields->addFieldsToTab(
-			'Root.Details',
+			"Root.{$this->name}Details",
 			array(
 				new TextField("{$this->name}[{$id}][Title]","Title", $this->controller->{$this->name}()->getField('Title')),
 				new TextareaField("{$this->name}[{$id}][Description]","Description", 3, NULL, $this->controller->{$this->name}()->getField('Description')),
@@ -146,7 +151,7 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 		$usage_mimetypes->addExtraClass('usage_mimetypes');
 		
 		$fields->addFieldsToTab(
-			'Root.Usage',
+			"Root.{$this->name}Usage",
 			array(
 				new LiteralField("GalleryUsageBoxStart", "<div class=\"display_anything display_anything_usage\">"),
 				new HeaderField("GalleryUsagePicker","Pick a gallery usage", 5),
@@ -168,7 +173,7 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 		$html .= "</div>";
 		
 		$fields->addFieldsToTab(
-			'Root.Files',
+			"Root.{$this->name}Files",
 			array(
 				new LiteralField('DisplayAnythingGalleryField', $html)
 			)
@@ -182,9 +187,12 @@ class DisplayAnythingGalleryField extends UploadAnythingField {
 		 */
 		if($pages = $this->GetPages($id)) {
 			if(count($pages) > 1) {
+			
+				$fields->addFieldToTab('Root', new Tab($this->name .'Pages', 'Pages'));
+			
 				//some duplicates.. show a tab
 				$fields->addFieldsToTab(
-					'Root.Pages',
+					"Root.{$this->name}Pages",
 					array(
 						new LiteralField('SharedPagesInformation', "<p>This gallery is being shared by other pages on this site. Use the checkboxes below to control associated pages. Changes to this gallery will appear on all associated pages.</p>"),
 						new CheckBoxSetField("SharedPages[{$this->name}][{$id}]", "", $pages, array_keys($pages)),
