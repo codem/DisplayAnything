@@ -606,7 +606,7 @@ class UploadAnythingField extends ComplexTableField {
 	 */
 	private function GetFileList() {
 		$html = "";
-		if(method_exists('DisplayAnythingFileList', $this->controller)) {
+		if(method_exists($this->controller,'DisplayAnythingFileList')) {
 			return $this->{$this->controller}->DisplayAnythingFileList();
 		} else {
 			$relation = $this->DataTypeRelation();
